@@ -109,6 +109,10 @@ class RegionCanvasView(QGraphicsView):
         self._regions = regions
         self._redraw_regions()
 
+    def active_capture_id(self) -> Optional[int]:
+        """Zona que recibirá el próximo recuadro dibujado (``None`` si ninguna)."""
+        return self._active_capture_id
+
     def set_active_capture_id(self, region_id: Optional[int]):
         self._active_capture_id = region_id
         if region_id is not None:

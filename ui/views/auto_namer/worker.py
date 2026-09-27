@@ -17,6 +17,7 @@ from core.ocr_engine import recognize_pdf_region
 from common.pdf.pdf_renderer import calculate_optimal_scale
 
 from .canvas import RegionData
+from .naming import assemble_name
 from .text_extractor import extract_text_from_norm_rect_static, clean_boilerplate
 
 class AutoNamerPreviewWorker(QThread):
@@ -185,16 +186,12 @@ class AutoNamerPreviewWorker(QThread):
                                 if val:
                                     has_captured_text = True
 
-                # Ensamblar nombre final
+                # Ensamblar nombre final (regla compartida con el diálogo: naming.assemble_name).
+                # `parts` alterna valor/separador, de ahí que los valores sean parts[::2].
                 if has_captured_text:
-                    assembled = "".join(parts).strip()
-                    for sep in self._separators_text:
-                        s_val = sep.strip()
-                        if s_val and assembled.endswith(s_val):
-                            assembled = assembled[:-len(s_val)].strip()
-                        if s_val and assembled.startswith(s_val):
-                            assembled = assembled[len(s_val):].strip()
-                    final_name = assembled if assembled else item.page_name
+                    final_name = (
+                        assemble_name(parts[::2], self._separators_text) or item.page_name
+                    )
                 else:
                     final_name = item.page_name
 

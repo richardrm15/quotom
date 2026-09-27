@@ -38,6 +38,9 @@ COUNTS: dict[str, int] = {}
 JUSTIFIED_EXCEPTIONS = {
     "project_editor/view.py":
         "el canvas (PlanGraphicsView) es un widget compartido por 2 features (Regla 19)",
+    "auto_namer/commands.py":
+        "el auto-nombrador no crea comandos: devuelve el mapeo de nombres y el gestor "
+        "de páginas (con su propio QUndoStack) es quien los aplica",
     "common/pdf/":
         "soporte PDF/caché compartido; el spec solo describe common/widgets y common/commands",
 }
@@ -187,7 +190,7 @@ print("\n[1.2] __init__.py faltantes:")
 for d in ["core", "core/services", "common", "common/commands", "common/widgets",
           "ui", "ui/styles", "ui/icons", "ui/views", "ui/views/main_window",
           "ui/views/project_editor", "tests", "tests/core", "tests/commands",
-          "tests/controllers", "common/pdf", "common/widgets/autonamer"]:
+          "tests/controllers", "common/pdf", "ui/views/auto_namer"]:
     p = ROOT / d
     if p.is_dir() and not (p / "__init__.py").exists():
         print(f"   FALTA {d}/__init__.py")

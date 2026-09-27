@@ -186,6 +186,15 @@ class DiskPageCache:
         except Exception:
             pass
 
+    def pages_metadata(self) -> dict:
+        """
+        Metadatos por página del documento actual (dimensiones, etc.).
+
+        Evita que consumidores externos (el controlador del auto-nombrador) lean
+        el diccionario interno para comprobar los tamaños de hoja.
+        """
+        return self._metadata.get("pages", {})
+
     def get_auto_namer_template(self) -> dict | None:
         """Obtiene la plantilla guardada de regiones de cajetín para este plano desde la caché."""
         return self._metadata.get("auto_namer_template")

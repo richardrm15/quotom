@@ -28,7 +28,7 @@ MIGRATED: list[str] = [
 PENDING = {
     "common/widgets/project_sidebar.py": 9,
     "common/widgets/markups_panel.py": 5,
-    "common/widgets/autonamer/main_window_auto_namer.py": 3,
+    "ui/views/auto_namer/view.py": 1,
     "common/widgets/page_manager.py": 24,
 }
 

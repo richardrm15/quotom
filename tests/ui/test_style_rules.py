@@ -27,7 +27,7 @@ MIGRATED = [
     "common/widgets/markups_panel.py",
     "common/widgets/project_sidebar.py",
     "common/widgets/page_manager.py",
-    "common/widgets/autonamer/main_window_auto_namer.py",
+    "ui/views/auto_namer/view.py",
 ]
 
 # Presupuesto restante por archivo. Vacío = Sprint P0 cerrado; nunca debe crecer.

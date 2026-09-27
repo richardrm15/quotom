@@ -39,10 +39,11 @@ contador del bloque en el que se trabaja debe **bajar**, nunca subir.
 | 10 | 21 — Gráficos fuera del dominio | 2 | **0** | ✅ |
 | 11 | Estructura objetivo | 14 | **0** | ✅ |
 | 12 | Restos / deuda técnica | 0 | **0** | ✅ |
-| | **TOTAL** | **204** | **141** | |
+| — | Tests automáticos (soporte, no regla) | 0 | **117** | — |
+| | **TOTAL** | **204** | **140** | |
 
-**Tests: 85 en verde** · **Compilación: OK** · **Emojis en el código: 0**
-Bloques cerrados: **Sprint 0**, **Q**, **FIX**, **P0.1**, **S**, **S6**, **H1**, **P2**, **FIX-T**, **P0.2**
+**Tests: 117 en verde** · **Compilación: OK** · **Emojis en el código: 0**
+Bloques cerrados: **Sprint 0**, **Q**, **FIX**, **P0.1**, **S**, **S6**, **H1**, **P2**, **FIX-T**, **P0.2**, **CONV**, **P0.3**, **A0**, **A1** (pendiente solo la migración de diálogos **DIAG**, en pausa por decisión del usuario)
 
 > ℹ️ **Corrección de medición (auditor):** el chequeo de la Regla 8 no detectaba `self._db`
 > (solo `.db`). Se endureció y el número real subió de 4 → **8**; tras migrar
@@ -221,12 +222,14 @@ en `common/widgets/annotation_item.py`, no en `core/`.
 | **CONV** | **Convención sin emojis**: 9 pictogramas sustituidos por iconos de `ui/icons/`, nuevo icono `alert-triangle`, tokens `warning`, guardarraíl permanente | Deuda de presentación | ✅ **cerrado** |
 | **DIAG** | **Fachada de diálogos** `ui/dialogs/`: mensajes, entradas y ficheros centralizados; `QFileDialog` dibujado por Qt (`DontUseNativeDialog`) para armonizar con el tema; QSS de diálogos; guardarraíl con trinquete | Desacoplamiento/estilo | ⏸️ **en pausa por decisión del usuario** (2/6 archivos) |
 | **P0.3** | Estilos (resto): `page_manager` 9 + `autonamer` 13 → `theme.qss` | Regla 18: 22 → **0** | ✅ **cerrado** |
+| **A0** | **Auto-nombrador**: red de seguridad (**+10 tests** con PDF generado por código) + eliminación de **84 líneas de código muerto** (el diálogo redefinía las funciones ya extraídas) | Prepara **H2**/desacoplamiento | ✅ **cerrado** |
+| **A1** | **Auto-nombrador desacoplado**: `naming` (dominio puro), `pdf_documents` (caché PDFium), `widgets` (tarjeta/fila/banner) y traslado a **`ui/views/auto_namer/`** con `view.py` + `controller.py` | **Regla 19** (D5.5) · diálogo **1.126 → 739** líneas | ✅ **cerrado** |
 | **P1** | Desacoplar vistas: señales `undo_requested`/`exit_requested`, `PageManagerOwner`, `graphics_view` sin `mw._*` | Regla 1/4: 15 → 0 | ⬜ |
 | **P2** | `core/` sin Qt: fuentes a `ui/helpers/`, `TextRect` puro | Regla 3: 3 → 0, Regla 21: 2 → 0 | ⬜ |
 | **P3** | Regla 17: 89 guardas de estado propio (mecánico) + 26 reales + 13 varios | Regla 17: 130 → 0 | ⬜ |
 | **F4** | `page_manager` → `ui/views/page_manager/` con `QUndoStack` propio (D5.3) | Deuda estructural | ⬜ |
 | **H1** | `.gitignore` (el repo no tenía ninguno ni commits: `env/` 695 MB + `.cache/` 862 MB entraban en un `git add -A`) | Riesgo de commit de ~1,5 GB | ✅ **cerrado** |
-| **H2** | Resto de higiene: `PendingTasks` → `docs/`, `common/widgets/autonamer/` → `ui/views/auto_namer/` (D5.5, D5.6) | Regla 19 | ⬜ |
+| **H2** | Resto de higiene: `PendingTasks` → `docs/`, `common/widgets/autonamer/` → `ui/views/auto_namer/` (D5.5, D5.6) | Regla 19 | ⏳ **mitad hecha**: el traslado del auto-nombrador lo cerró **A1**; falta `PendingTasks` → `docs/` |
 
 **Orden recomendado y esfuerzo restante (~15-18 h):**
 
@@ -377,6 +380,38 @@ con `QUndoStack` propio.
 | Reglas añadidas | Entornos virtuales, cachés de Python/pytest, caché de render Tier 2 (`.cache/`, recalculable según `common/pdf/disk_cache.py`), datos por proyecto (`*.db`, `drawings/`) y ruido de SO/editor |
 | Verificación | `git check-ignore -v` confirma cada regla; lo que entraría pasa de 13 entradas (~1,5 GB) a **99 archivos / 1,1 MB**: 93 `.py` + `requirements.txt`, `theme.qss`, `PendingTasks`, `AUDIT_V2_REPORT.md`, `pytest.ini` y el propio `.gitignore` |
 | Sesgo detectado y evitado | `PendingTasks` **parece** un archivo temporal (y no tiene extensión) pero es la **especificación de la auditoría** → se conserva; solo faltaría renombrarlo (H2) |
+
+**Bloque A0 (auto-nombrador: red de seguridad + código muerto)**
+| Ítem | Resultado |
+|---|---|
+| 🎯 **Punto de partida** | `common/widgets/autonamer/main_window_auto_namer.py` = **1.126 líneas**, una sola clase con **35 métodos** (el mayor, `_init_ui`, de **194 líneas**) y **8 responsabilidades** mezcladas: UI, ciclo de vida de PDFs, extracción de texto, reglas del nombre (dominio puro), worker en segundo plano, plantilla cacheada, overlays de depuración y aplicación de resultados |
+| 🔴 **Hallazgo: refactor a medias** | El archivo **ya importaba** `clean_boilerplate`, `extract_text_from_norm_rect_static` y `BOILERPLATE_PATTERNS` de `text_extractor.py` y las **aliasaba** en la clase… pero **más abajo las redefinía enteras** (los dos métodos *y* la lista de patrones, que quedaba por triplicado), anulando los alias. Las llamadas reales resolvían al módulo (regla LEGB), así que **el bloque duplicado era código muerto** |
+| Acción | Eliminado el bloque (**−84 líneas**) → **1.126 → 1.042**. Riesgo **cero**, verificado: ninguna llamada usaba `self.`/`AutoNamerDialog.` para esos nombres |
+| 🧪 **Infraestructura de tests nueva** | `tests/support.make_text_pdf()`: genera un PDF de una página **con capa de texto real** (669 bytes, sin dependencias) en coordenadas conocidas. Necesario porque el E2E actual depende de `~/Documents/BMSBidSuite/pdf-examples/*.pdf` y **se salta la prueba** si no existe: en otra máquina o en CI no correría nunca |
+| Tests nuevos | **+10** en `tests/ui/test_text_extractor.py`: limpieza de cajetín, extracción acotada por región (título sí / código no, y viceversa), región vacía, página sin capa de texto, vía nativa de PDFium (`FPDFText_GetBoundedText`) y **guardarraíl anti-duplicación** (AST: la clase no puede volver a redefinir esas funciones) |
+| Flujo TDD aplicado | El guardarraíl se escribió **antes** del arreglo → falló en **rojo** (demostrando la duplicación existente) → se borró el bloque muerto → **verde** |
+| 📐 Comportamiento documentado | La extracción **descarta los espacios** del PDF y los **reinserta con una heurística** (`gap > 0.45 × ancho`), por eso un `A-101` puede devolverse como `A-1 01`. Los tests lo fijan con fragmentos distintivos en vez de exigir un espaciado que la función nunca prometió |
+| Ubicación de los tests | `tests/ui/` y no `tests/core/`: el módulo importa Qt (`QRectF` en las anotaciones), y la Regla 20 exige que `tests/core/` no arranque Qt |
+| Siguiente (desacoplamiento real) | Plan por riesgo **decreciente**, ya con red de seguridad: (2) `naming.py` con `assemble_name` + limpieza (dominio puro), (3) caché de documentos PDF fuera del diálogo, (4) widgets propios a `widgets.py` y partir `_init_ui`, (5) mover la feature a `ui/views/auto_namer/` (**H2**, D5.5) con `view`/`controller` |
+| Verificación | `compileall` ✅ · suite completa **95 tests** ✅ · 0 emojis ✅ · el diálogo sigue construyéndose (smoke del banner) ✅ · auditor: **TOTAL 141** sin cambios (el código borrado no estaba señalado) |
+
+**Bloque A1 (auto-nombrador desacoplado: 5 pasos)**
+| Ítem | Resultado |
+|---|---|
+| 🎯 **Punto de partida** | Una sola clase de **1.126 líneas** y 35 métodos con **8 responsabilidades** mezcladas (UI, PDFs, extracción, nombres, worker, plantilla, overlays, aplicación) |
+| 🔴 **Bug real encontrado y corregido** | `_get_doc` llamaba a `Path(pdf_path).exists()` **sin importar `Path`**. El `NameError` lo tragaba un `except` genérico, así que **la página de muestra quedaba en blanco** (pixmap de error 800×600) cada vez que las cachés estaban frías, y la comprobación de dimensiones se degradaba en silencio. Medido antes/después: `800×600` → **`1530×1980`** (página real renderizada) |
+| 🔴 **Segundo bug (fuga)** | Los separadores se añadían al layout como **layouts anidados**; al reconstruir, un layout no tiene `widget()` y sus hijos **nunca se liberaban**: fuga en cada recuadro dibujado. Ahora son widgets (`SeparatorRow`) y se destruyen correctamente |
+| 🔍 **El `except` mudo del render** | El fallo de la página en blanco sobrevivió porque un `except Exception` sin traza lo ocultaba. Ahora registra un aviso (`logger.warning`), verificado provocando el fallo: `Auto-nombrador: no se pudo renderizar la página 0: fallo simulado de renderizado` |
+| 🧹 **Código muerto eliminado en `_apply_to_pages`** | Se construían `regions_args` y `tasks` (restos de una extracción en paralelo) que **nadie usaba** |
+| **Paso 2 — `naming.py`** | Regla de composición del nombre como **dominio puro, sin Qt**. Estaba **triplicada** (diálogo, worker y aplicación final) con riesgo de divergir: ahora los tres usan `assemble_name`/`has_captured_text` |
+| **Paso 3 — `pdf_documents.py`** | `PdfDocumentCache`: abrir/reutilizar/cerrar documentos PDFium sale del diálogo (y con él el `Path` del bug) |
+| **Paso 4 — `widgets.py`** | `ZoneCard` (con señales propias), `SeparatorRow` y `AlertBanner`. `_init_ui` (**194 líneas**) se divide en `_build_frame` / `_build_canvas_panel` / `_build_tools_panel` (máximo 98 líneas) |
+| **Paso 5 — traslado (D5.5)** | La feature pasa de `common/widgets/autonamer/` a **`ui/views/auto_namer/`** con `view.py` (**739 líneas**) + `controller.py` (**393**, 20 métodos) + `canvas`, `widgets`, `worker`, `text_extractor`, `naming`, `pdf_documents`. El auditor la reconoce como feature (`[1.3]`) |
+| 🧭 **`commands.py` no existe, a propósito** | El auto-nombrador **no** crea comandos: devuelve el mapeo de nombres y es el gestor de páginas (con su propio `QUndoStack`) quien los aplica. Registrado como **excepción documentada** en el auditor |
+| 🔓 **Acoplamientos rotos** | `self._canvas._active_capture_id` → `active_capture_id()`; `self._disk_cache._metadata` → `pages_metadata()`; el controlador expone `document_for()` en lugar de compartir el diccionario interno |
+| Tests nuevos | **+22**: `test_naming.py` (**+9**, incluye una **prueba diferencial de +50.000 casos** contra la implementación anterior, que demuestra que unificar la regla no cambió el resultado), `test_pdf_documents.py` (**+6**, con la regresión del `Path`), `test_autonamer_widgets.py` (**+7**, pulsando los botones de verdad para fijar el cierre de las lambdas) |
+| 📐 Hallazgos documentados por los tests | La extracción descarta los espacios del PDF y los reinserta con heurística (`A-101` → `A-1 01`); un separador de solo espacios se conserva en medio; si el dato coincide con el separador el nombre queda vacío pero la zona **sí** capturó texto (el worker conserva el nombre original) |
+| Verificación | `compileall` ✅ · suite completa **117 tests** ✅ · 0 emojis ✅ · QSS intacto ✅ · auditor: **TOTAL 141 → 140**, Estructura **0** ✅ · smokes: UI completa, banner, extracción real (`PLANTA BAJA - NIVEL 2 - A-101`) y cierre de documentos (1 → 0) |
 
 
 ---
@@ -554,6 +589,8 @@ traducir los botones de Qt, sino la capa de traducción de los textos de la apli
 | Tras **P0.2** (estilos lote 1) | **164** | **23** | **0** | **78** |
 | Tras **CONV** (sin emojis + icono `alert-triangle`) | **163** | **22** | **0** | **81** |
 | Tras **P0.3** (estilos a 0) | **141** | **0** | **0** | **85** |
+| Tras **A0** (red de seguridad del auto-nombrador) | **141** | **0** | **0** | **95** |
+| Tras **A1** (auto-nombrador desacoplado) | **140** | **0** | **0** | **117** |
 
 > Los totales de v1 y v2 no son comparables: v2 mide reglas nuevas (17, 8, 21, estructura
 > ampliada) que v1 no contaba.

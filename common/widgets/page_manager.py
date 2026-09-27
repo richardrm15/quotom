@@ -1219,7 +1219,7 @@ class PageManagerWindow(QDialog):
             QMessageBox.information(self, "Sin selección", "No hay páginas seleccionadas para nombrar.")
             return
 
-        from common.widgets.autonamer import AutoNamerDialog
+        from ui.views.auto_namer import AutoNamerDialog
         dialog = AutoNamerDialog(
             items=self._items,
             selected_indices=selected,

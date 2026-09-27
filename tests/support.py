@@ -74,6 +74,69 @@ def event_loop_for(ms: int):
     return loop
 
 
+def make_text_pdf(path: str, lines, page_size: tuple[float, float] = (612.0, 792.0)) -> str:
+    """
+    Genera un PDF de una página **con capa de texto** real, sin dependencias externas.
+
+    Permite probar de forma determinista la extracción de texto (auto-nombrador,
+    búsqueda, OCR) con contenido y coordenadas conocidas, en lugar de depender de
+    un PDF de ejemplo que puede no existir en la máquina (el E2E actual se salta
+    la prueba si falta).
+
+    Args:
+        path: Ruta donde escribir el PDF.
+        lines: Iterable de ``(texto, x_pts, y_pts)`` en coordenadas PDF (origen
+            en la esquina **inferior** izquierda, como marca la especificación).
+        page_size: ``(ancho, alto)`` en puntos. Por defecto tamaño carta.
+
+    Returns:
+        La ruta del PDF generado.
+    """
+    ancho, alto = page_size
+    contenido = ["BT", "/F1 12 Tf"]
+    for texto, x, y in lines:
+        escapado = (
+            texto.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
+        )
+        contenido.append(f"1 0 0 1 {x:g} {y:g} Tm")
+        contenido.append(f"({escapado}) Tj")
+    contenido.append("ET")
+    stream = "\n".join(contenido).encode("latin-1")
+
+    objetos = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {ancho:g} {alto:g}] "
+            f"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ).encode("latin-1"),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n"
+        + stream
+        + b"\nendstream",
+    ]
+
+    salida = bytearray(b"%PDF-1.4\n")
+    offsets: list[int] = []
+    for numero, cuerpo in enumerate(objetos, start=1):
+        offsets.append(len(salida))
+        salida += f"{numero} 0 obj\n".encode() + cuerpo + b"\nendobj\n"
+
+    inicio_xref = len(salida)
+    salida += f"xref\n0 {len(objetos) + 1}\n".encode()
+    salida += b"0000000000 65535 f \n"
+    for offset in offsets:
+        salida += f"{offset:010d} 00000 n \n".encode()
+    salida += (
+        f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R >>\n"
+        f"startxref\n{inicio_xref}\n%%EOF\n"
+    ).encode()
+
+    with open(path, "wb") as f:
+        f.write(salida)
+    return path
+
+
 _theme_applied = False
 
 
