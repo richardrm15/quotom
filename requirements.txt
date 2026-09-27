@@ -1,0 +1,14 @@
+# Framework de Interfaz Gráfica (Qt 6)
+PySide6>=6.6.0
+
+# Motor de renderizado PDF de alto rendimiento y búsqueda vectorial
+pypdfium2>=4.28.0
+
+# Exportación de reportes de cómputo a Excel (.xlsx)
+openpyxl>=3.1.2
+
+# Empaquetado en binario ejecutable autocontenido
+pyinstaller>=6.4.0
+
+# Framework de pruebas (Sprint 0 — guardarraíles de refactor)
+pytest>=8.0.0

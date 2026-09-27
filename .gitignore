@@ -1,0 +1,48 @@
+# ==============================================================================
+# Quotom — reglas de exclusión para Git
+# ------------------------------------------------------------------------------
+# Objetivo: el repositorio contiene SOLO código y documentación. Nada de
+# dependencias, cachés de ejecución ni datos de proyectos de usuario.
+# Verificado con: git check-ignore -v <ruta>
+# ==============================================================================
+
+# --- Entornos virtuales (env/ = ~695 MB) --------------------------------------
+env/
+.venv/
+venv/
+ENV/
+
+# --- Cachés de Python y de herramientas ---------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Caché de render de PDFs (Tier 2, ~862 MB) --------------------------------
+# Creada por common/pdf/disk_cache.py en `.cache/drawings/`.
+# Es 100 % recalculable: borrarla solo cuesta rendimiento la primera vez.
+.cache/
+
+# --- Datos de proyectos de usuario creados por la app -------------------------
+# Estructura por proyecto: <proyecto>/drawings/  +  <proyecto>/project.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+drawings/
+
+# --- Sistema operativo y editores ---------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

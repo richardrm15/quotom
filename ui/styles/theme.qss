@@ -1,0 +1,1236 @@
+/* =========================================================================
+   ui/styles/theme.qss
+   Hoja de estilos centralizada (Single Source of Truth visual).
+   Los marcadores entre llaves simples los sustituye ThemeManager
+   (ui/styles/style_manager.py) con los tokens del tema activo.
+   NO hardcodear estilos en las vistas.
+   ========================================================================= */
+
+QMainWindow#mainAppWindow {{
+    background-color: {bg_base};
+    border: 1px solid {border_base};
+}}
+
+QWidget {{
+    background-color: {bg_base};
+    color: {text_primary};
+    font-size: 12px;
+}}
+
+/* Barra de Título CSD */
+QWidget#customTitleBar {{
+    background-color: {bg_titlebar};
+    border-bottom: 1px solid {border_titlebar};
+}}
+
+QLabel#titleLabel {{
+    color: {text_primary};
+    font-size: 12px;
+    font-weight: 500;
+}}
+
+QPushButton#winMinButton, QPushButton#winMaxButton, QPushButton#winCloseButton {{
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+}}
+
+QPushButton#winMinButton:hover, QPushButton#winMaxButton:hover {{
+    background-color: {win_control_hover};
+}}
+
+QPushButton#winCloseButton:hover {{
+    background-color: {win_close_hover};
+}}
+
+/* Barra de Menús del Sistema (QMenuBar) */
+QMenuBar {{
+    background-color: {bg_surface};
+    color: {text_primary};
+    border-bottom: 1px solid {border_base};
+    padding: 1px 4px 1px 36px;
+    font-size: 12px;
+}}
+
+QMenuBar::item {{
+    background: transparent;
+    padding: 4px 8px;
+    border-radius: 3px;
+    color: {text_primary};
+}}
+
+QMenuBar::item:selected, QMenuBar::item:pressed {{
+    background-color: {bg_hover};
+    color: {text_primary};
+}}
+
+/* Menús Desplegables (QMenu) */
+QMenu {{
+    background-color: {bg_surface};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 4px 0px;
+    color: {text_primary};
+}}
+
+QMenu::item {{
+    padding: 5px 24px 5px 12px;
+    border-radius: 2px;
+    margin: 1px 4px;
+}}
+
+QMenu::item:selected {{
+    background-color: {primary};
+    color: {text_on_primary};
+}}
+
+QMenu::item:disabled {{
+    color: {text_secondary};
+    background-color: transparent;
+}}
+
+QMenu::separator {{
+    height: 1px;
+    background-color: {border_base};
+    margin: 4px 6px;
+}}
+
+/* Barra de herramientas superior centrada sobre el visor */
+QWidget#toolbarWrapper {{
+    background-color: {bg_surface};
+    border-bottom: 1px solid {border_base};
+}}
+
+QToolBar {{
+    background-color: transparent;
+    border: none;
+    padding: 2px 0px;
+    spacing: 6px;
+}}
+
+/* Botones de acción */
+QPushButton, QToolButton {{
+    background-color: {bg_button};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 3px;
+    padding: 3px 8px;
+    font-size: 12px;
+    text-align: center;
+}}
+
+QPushButton:hover, QToolButton:hover {{
+    background-color: {bg_button_hover};
+    color: {text_primary};
+}}
+
+QPushButton:pressed, QToolButton:pressed {{
+    background-color: {primary};
+    color: {text_on_primary};
+}}
+
+QPushButton:checked, QToolButton:checked {{
+    background-color: rgba(14, 165, 233, 0.25);
+    border: 1.5px solid {primary};
+}}
+
+QPushButton:disabled, QToolButton:disabled {{
+    color: {text_disabled};
+    border-color: {border_base};
+}}
+
+QLabel {{
+    color: {text_primary};
+    font-size: 12px;
+}}
+
+QLabel#zoomLabel {{
+    color: {text_secondary};
+    padding: 2px 6px;
+}}
+
+/* Campo de entrada de página camuflado in-place */
+QLineEdit#pageEntryWidget {{
+    background: transparent;
+    color: {text_secondary};
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 12px;
+    min-width: 80px;
+    max-width: 100px;
+}}
+
+QLineEdit#pageEntryWidget:hover {{
+    color: {text_primary};
+    background-color: {bg_hover};
+    border: 1px solid {border_hover};
+}}
+
+QLineEdit#pageEntryWidget:focus {{
+    color: {text_primary};
+    background-color: {bg_input_focus};
+    border: 1px solid {border_focus};
+}}
+
+QLineEdit#pageEntryWidget:disabled {{
+    color: {text_disabled};
+    background: transparent;
+    border: none;
+}}
+
+/* Panel lateral de proyectos (Project Sidebar) */
+QWidget#projectSidebar, QWidget#bookmarksSidebar {{
+    background-color: {bg_surface};
+    border-right: 1px solid {border_base};
+}}
+
+QLabel#sidebarHeaderLabel {{
+    font-size: 12px;
+    font-weight: bold;
+    color: {text_primary};
+}}
+
+QListWidget#drawingsList, QTreeWidget#drawingsTree, QTreeWidget#bookmarksTree {{
+    background-color: {bg_input};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 2px;
+    color: {text_primary};
+    outline: none;
+}}
+
+QListWidget#drawingsList::item, QTreeWidget#drawingsTree::item, QTreeWidget#bookmarksTree::item {{
+    height: 26px;
+    padding: 2px 4px;
+    border-radius: 3px;
+}}
+
+QListWidget#drawingsList::item:hover, QTreeWidget#drawingsTree::item:hover, QTreeWidget#bookmarksTree::item:hover {{
+    background-color: {bg_hover};
+    color: {text_primary};
+}}
+
+QListWidget#drawingsList::item:selected, QTreeWidget#drawingsTree::item:selected, QTreeWidget#bookmarksTree::item:selected {{
+    background-color: {primary};
+    color: {text_on_primary};
+}}
+
+QTreeWidget#drawingsTree::branch, QTreeWidget#bookmarksTree::branch {{
+    background: transparent;
+}}
+
+QTreeWidget#drawingsTree::branch:has-children:!has-siblings:closed,
+QTreeWidget#drawingsTree::branch:closed:has-children:has-siblings,
+QTreeWidget#bookmarksTree::branch:has-children:!has-siblings:closed,
+QTreeWidget#bookmarksTree::branch:closed:has-children:has-siblings {{
+    border-image: none;
+    image: url({plus_url});
+}}
+
+QTreeWidget#drawingsTree::branch:open:has-children:!has-siblings,
+QTreeWidget#drawingsTree::branch:open:has-children:has-siblings,
+QTreeWidget#bookmarksTree::branch:open:has-children:!has-siblings,
+QTreeWidget#bookmarksTree::branch:open:has-children:has-siblings {{
+    border-image: none;
+    image: url({minus_url});
+}}
+
+QSplitter::handle {{
+    background-color: {border_base};
+    width: 1px;
+}}
+
+
+/* Desplegable de Páginas y Hojas (QComboBox) */
+QComboBox#pageSelectCombo {{
+    background-color: {bg_input};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: {text_primary};
+    font-size: 11px;
+    font-weight: 500;
+    min-height: 26px;
+}}
+
+QComboBox#pageSelectCombo:hover {{
+    border-color: {primary};
+    background-color: {bg_hover};
+}}
+
+QComboBox#pageSelectCombo:focus {{
+    border-color: {primary};
+}}
+
+QComboBox#pageSelectCombo::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 22px;
+    border-left: none;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}}
+
+QComboBox#pageSelectCombo::down-arrow {{
+    image: url({chevron_url});
+    width: 10px;
+    height: 10px;
+}}
+
+QComboBox#pageSelectCombo QAbstractItemView {{
+    background-color: {bg_surface};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 3px;
+    color: {text_primary};
+    selection-background-color: {primary};
+    selection-color: {text_on_primary};
+    outline: none;
+}}
+
+QComboBox#pageSelectCombo QAbstractItemView::item {{
+    min-height: 24px;
+    padding: 2px 6px;
+    border-radius: 2px;
+}}
+
+QComboBox#pageSelectCombo QAbstractItemView::item:hover {{
+    background-color: {bg_hover};
+    color: {text_primary};
+}}
+
+QComboBox#pageSelectCombo QAbstractItemView::item:selected {{
+    background-color: {primary};
+    color: {text_on_primary};
+}}
+
+/* Barra de pestañas lateral (Activity / Side Tab Bar) */
+QWidget#sideTabBar, QWidget#leftTabBar {{
+    background-color: {bg_surface};
+    border-right: 1px solid {border_base};
+}}
+
+QWidget#rightTabBar {{
+    background-color: {bg_surface};
+    border-left: 1px solid {border_base};
+}}
+
+QToolButton.sideTabButton, QToolButton.rightTabButton {{
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 0px;
+    margin: 2px 0px;
+    color: {text_secondary};
+}}
+
+QToolButton.sideTabButton:hover, QToolButton.rightTabButton:hover {{
+    background-color: {bg_hover};
+    color: {text_primary};
+}}
+
+QToolButton.sideTabButton:checked, QToolButton.rightTabButton:checked {{
+    background-color: {bg_hover};
+    color: {primary};
+    border-left: 3px solid {primary};
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+}}
+
+/* Barra de estado inferior */
+QStatusBar {{
+    background-color: {bg_surface};
+    border-top: 1px solid {border_base};
+    color: {text_secondary};
+    font-size: 11px;
+    min-height: 24px;
+}}
+
+QStatusBar::item {{
+    border: none;
+}}
+
+QStatusBar QLabel {{
+    color: {text_secondary};
+    font-size: 11px;
+}}
+
+QSizeGrip {{
+    background-color: transparent;
+    width: 24px;
+    height: 22px;
+}}
+
+/* Barra de progreso en segundo plano */
+QProgressBar {{
+    background-color: {bg_input};
+    border: 1px solid {border_base};
+    border-radius: 3px;
+    text-align: center;
+    color: {text_primary};
+    font-size: 9px;
+    font-weight: 600;
+}}
+
+QProgressBar::chunk {{
+    background-color: {primary};
+    border-radius: 2px;
+}}
+
+/* Scrollbars */
+QScrollBar:vertical {{
+    background: {scroll_track};
+    width: 12px;
+    margin: 0px;
+}}
+
+QScrollBar::handle:vertical {{
+    background: {scroll_handle};
+    min-height: 24px;
+    border-radius: 6px;
+    margin: 2px;
+}}
+
+QScrollBar::handle:vertical:hover {{
+    background: {scroll_handle_hover};
+}}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0px;
+}}
+
+QScrollBar:horizontal {{
+    background: {scroll_track};
+    height: 12px;
+    margin: 0px;
+}}
+
+QScrollBar::handle:horizontal {{
+    background: {scroll_handle};
+    min-width: 24px;
+    border-radius: 6px;
+    margin: 2px;
+}}
+
+QScrollBar::handle:horizontal:hover {{
+    background: {scroll_handle_hover};
+}}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+    width: 0px;
+}}
+
+/* Deslizadores estilizados de alta visibilidad (QSlider) */
+QSlider {{
+    min-height: 24px;
+}}
+
+QSlider::groove:horizontal {{
+    border: none;
+    height: 6px;
+    background-color: rgba(128, 128, 128, 0.35);
+    border-radius: 3px;
+}}
+
+QSlider::sub-page:horizontal {{
+    background-color: {primary};
+    border-radius: 3px;
+}}
+
+QSlider::handle:horizontal {{
+    background-color: #FFFFFF;
+    border: 2px solid {primary};
+    width: 14px;
+    height: 14px;
+    margin: -4px 0;
+    border-radius: 7px;
+}}
+
+QSlider::handle:horizontal:hover {{
+    background-color: #FFFFFF;
+    border: 2px solid {primary_hover};
+}}
+
+QSlider::handle:horizontal:pressed {{
+    background-color: {primary};
+    border: 2px solid #FFFFFF;
+}}
+
+/* SpinBoxes numéricos */
+QSpinBox {{
+    background-color: {bg_input};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    min-height: 22px;
+}}
+
+QSpinBox:focus {{
+    border: 1.5px solid {primary};
+}}
+
+QSpinBox::up-button, QSpinBox::down-button {{
+    width: 14px;
+    background-color: {bg_button};
+    border: none;
+    border-radius: 2px;
+    margin: 1px;
+}}
+
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+    background-color: {bg_button_hover};
+}}
+
+/* Tabla de Cómputos */
+QTableView {{
+    background-color: {table_bg};
+    gridline-color: {table_grid};
+    color: {text_primary};
+    font-size: 11px;
+    border: 1px solid {border_base};
+    selection-background-color: {table_selected_bg};
+    selection-color: {table_selected_text};
+}}
+
+QHeaderView::section {{
+    background-color: {table_header_bg};
+    color: {table_header_text};
+    padding: 4px;
+    border: 1px solid {border_base};
+    font-weight: bold;
+    font-size: 11px;
+}}
+
+/* Gestor de Páginas (Page Manager Window) */
+QDialog#pageManagerWindow {{
+    background-color: {bg_base};
+    border: 1px solid {border_base};
+}}
+
+QFrame#pageManagerMainFrame {{
+    background-color: {bg_base};
+    border: 1px solid {border_base};
+}}
+
+QFrame#pageManagerToolbar, QFrame#fullViewHeader {{
+    background-color: {bg_surface};
+    border-bottom: 1px solid {border_base};
+}}
+
+QScrollArea#pageGridScrollArea, QScrollArea#fullViewScrollArea {{
+    background-color: {bg_canvas};
+    border: none;
+}}
+
+QWidget#pageGridContainer {{
+    background-color: {bg_canvas};
+}}
+
+QPushButton#primaryActionButton {{
+    background-color: {primary};
+    color: {text_on_primary};
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 4px 12px;
+}}
+
+QPushButton#primaryActionButton:hover {{
+    background-color: {primary_hover};
+}}
+
+QPushButton#btnBackGrid {{
+    background-color: {bg_button};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 11px;
+    padding: 4px 12px;
+}}
+
+QPushButton#btnBackGrid:hover {{
+    background-color: {bg_hover};
+    border-color: {primary};
+}}
+
+
+/* Barra de búsqueda flotante unificada (FindBar / Ctrl+F) */
+QFrame#findBar {{
+    background-color: {bg_surface};
+    border: 1px solid {border_base};
+    border-radius: 8px;
+}}
+
+QLineEdit#findInput {{
+    background-color: {bg_input};
+    border: 1px solid {border_base};
+    border-radius: 5px;
+    padding: 0px 8px;
+    height: 26px;
+    color: {text_primary};
+    font-size: 12px;
+}}
+
+QLineEdit#findInput:focus {{
+    border: 1px solid {primary};
+}}
+
+QPushButton#findBtnPrev, QPushButton#findBtnNext, QPushButton#findBtnClose {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px;
+}}
+
+QPushButton#findBtnPrev:hover, QPushButton#findBtnNext:hover {{
+    background-color: {bg_hover};
+    border: 1px solid {border_base};
+}}
+
+QPushButton#findBtnClose:hover {{
+    background-color: rgba(224, 108, 117, 0.25);
+    border: 1px solid #E06C75;
+}}
+
+QLabel#findCountLabel {{
+    font-size: 11px;
+    color: {text_secondary};
+    padding: 0 4px;
+}}
+
+QLabel#findCountLabel[status="error"] {{
+    color: {error};
+    font-weight: normal;
+}}
+
+QLabel#findCountLabel[status="found"] {{
+    color: {success};
+    font-weight: bold;
+}}
+
+
+QFrame#toolSeparator {{
+    background-color: rgba(128, 128, 128, 0.25);
+    margin: 3px 4px;
+}}
+
+/* =======================================================================
+   Barra de herramientas de anotaciones
+   ======================================================================= */
+QWidget#annotationToolBar {{
+    background-color: {bg_surface};
+    border-left: 1px solid {border_base};
+}}
+
+QWidget#annotationToolBar QToolButton {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0;
+}}
+
+QWidget#annotationToolBar QToolButton:hover {{
+    background-color: rgba(128, 128, 128, 0.15);
+    border: 1px solid rgba(128, 128, 128, 0.3);
+}}
+
+QWidget#annotationToolBar QToolButton:checked {{
+    background-color: rgba(14, 165, 233, 0.2);
+    border: 1.5px solid {primary};
+}}
+
+
+/* =======================================================================
+   Panel de anotaciones (markups)
+   ======================================================================= */
+QWidget#markupsPanel {{
+    background-color: {bg_surface};
+    border-top: 1px solid {border_base};
+}}
+
+QWidget#markupsToolbar {{
+    background-color: {bg_surface};
+    border-bottom: 1px solid {border_base};
+}}
+
+QLabel#markupsTitleLabel {{
+    font-weight: 600;
+    font-size: 12px;
+    padding: 0 10px;   /* aire a ambos lados para que el texto quede centrado */
+}}
+
+QLabel#markupsCountLabel {{
+    font-size: 11px;
+    color: {text_secondary};
+    padding: 0 10px;   /* los paréntesis dejan de tocar la caja */
+}}
+
+/* =======================================================================
+   Auto-nombrador (AutoNamerDialog)
+   ======================================================================= */
+QDialog#autoNamerDialog, QFrame#autoNamerMainFrame {{
+    background-color: {bg_base};
+    border: 1px solid {border_base};
+}}
+
+QFrame#autoNamerCanvasBar {{
+    background-color: {bg_surface};
+    border-bottom: 1px solid {border_base};
+}}
+
+QFrame#autoNamerAlertBanner {{
+    background-color: {bg_hover};
+    border-bottom: 1px solid {warning};
+}}
+
+QFrame#autoNamerZoneCard {{
+    background-color: {bg_surface};
+    border: 1px solid {border_base};
+    border-radius: 6px;
+}}
+
+QFrame#autoNamerPreviewCard {{
+    background-color: {bg_surface};
+    border: 1px solid {primary};
+    border-radius: 6px;
+}}
+
+/* Tablas y cabeceras acotadas al diálogo: sin acotar afectarían a las demás
+   tablas de la aplicación. */
+QDialog#autoNamerDialog QTableWidget {{
+    background-color: {bg_surface};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    gridline-color: {border_base};
+}}
+
+QTableWidget#autoNamerPreviewTable {{
+    font-size: 11px;
+}}
+
+QDialog#autoNamerDialog QHeaderView::section {{
+    background-color: {bg_base};
+    color: {text_secondary};
+    border: none;
+    border-bottom: 1px solid {border_base};
+    padding: 4px;
+    font-weight: bold;
+}}
+
+/* Etiquetas */
+QLabel#autoNamerHintLabel {{
+    font-size: 10px;
+    color: {text_secondary};
+    padding: 4px 12px;
+}}
+
+QLabel#autoNamerSectionTitle {{
+    font-size: 13px;
+    font-weight: bold;
+}}
+
+QLabel#autoNamerPreviewTitle {{
+    font-size: 10px;
+    font-weight: 600;
+    color: {text_secondary};
+}}
+
+QLabel#autoNamerLiveName {{
+    font-size: 13px;
+    font-weight: bold;
+    color: {primary};
+}}
+
+QLabel#autoNamerTableTitle {{
+    font-size: 11px;
+    font-weight: bold;
+}}
+
+QLabel#autoNamerProgressLabel {{
+    font-size: 11px;
+    font-weight: 600;
+    color: {primary};
+}}
+
+QLabel#autoNamerZoneName {{
+    font-size: 11px;
+    font-weight: 600;
+}}
+
+QLabel#autoNamerZonePreview {{
+    font-size: 11px;
+    color: {text_secondary};
+}}
+
+/* El color del badge y del botón de captura es DATO del usuario (por zona):
+   lo aplica ThemeManager.apply_zone_color(); aquí solo lo estático. */
+QLabel#autoNamerZoneBadge {{
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-weight: bold;
+}}
+
+QPushButton#autoNamerCaptureBtn {{
+    font-size: 11px;
+}}
+
+
+/* =======================================================================
+   Gestor de páginas (PageManagerWindow + tarjetas de página)
+   ======================================================================= */
+/* Tarjeta de página: el estado seleccionado/no seleccionado llega por la
+   propiedad dinámica `state` (lo fija PageCardWidget._update_appearance). */
+QFrame#pageCard {{
+    background-color: {bg_surface};
+    border: 1px solid {border_base};
+    border-radius: 6px;
+}}
+
+QFrame#pageCard[state="selected"] {{
+    background-color: {bg_hover};
+    border: 2px solid {primary};
+}}
+
+QFrame#pageCard:hover {{
+    border: 2px solid {primary};
+}}
+
+QFrame#pageCardThumbContainer {{
+    background-color: {bg_base};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+}}
+
+QLabel#pageCardThumbLabel {{
+    font-size: 10px;
+    color: {text_secondary};
+}}
+
+QLabel#pageCardTitle {{
+    font-size: 11px;
+    font-weight: 600;
+}}
+
+QLabel#pageCardBadge {{
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: {bg_input};
+    color: {text_secondary};
+}}
+
+QLabel#pageCardBadge[state="selected"] {{
+    background-color: {primary};
+    color: {text_on_primary};
+}}
+
+QPushButton#pageCardActionBtn {{
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    padding: 2px;
+}}
+
+QPushButton#pageCardActionBtn:hover {{
+    background-color: {bg_hover};
+}}
+
+/* Vista de lista compacta del gestor */
+QTableWidget#pageListTable {{
+    background-color: {bg_canvas};
+    color: {text_primary};
+    border: none;
+    gridline-color: transparent;
+    selection-background-color: {primary};
+    selection-color: {text_on_primary};
+}}
+
+QTableWidget#pageListTable::item {{
+    padding: 6px 12px;
+    border-bottom: 1px solid {border_base};
+}}
+
+QTableWidget#pageListTable::item:selected {{
+    background-color: {primary};
+    color: {text_on_primary};
+}}
+
+QTableWidget#pageListTable::item:hover:!selected {{
+    background-color: {bg_hover};
+}}
+
+/* Visor de página completa y barra de herramientas del gestor */
+QGraphicsView#fullPageViewer {{
+    background-color: {bg_canvas};
+    border: none;
+}}
+
+QLabel#pageCountLabel {{
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 4px;
+}}
+
+QLabel#fullViewTitle {{
+    font-size: 12px;
+    font-weight: bold;
+}}
+
+QFrame#pageToolbarSeparator, QFrame#fullViewSeparator {{
+    background-color: {border_base};
+    border: none;
+    max-width: 1px;
+}}
+
+/* Cabeceras acotadas al gestor: sin acotar afectarían a TODAS las tablas */
+QDialog#pageManagerWindow QHeaderView::section {{
+    background-color: {bg_surface};
+    color: {text_secondary};
+    font-weight: 700;
+    font-size: 11px;
+    border: none;
+    border-bottom: 1px solid {border_base};
+    padding: 8px 12px;
+}}
+
+
+/* =======================================================================
+   Diálogos emergentes: mensajes, entradas de texto y ficheros.
+   Todos los dibuja Qt (no el sistema) para que hereden el tema activo y el
+   sistema de diseño. Ver ui/dialogs/file_dialogs.py para el porqué del
+   DontUseNativeDialog.
+   ======================================================================= */
+QDialog {{
+    background-color: {bg_surface};
+    color: {text_primary};
+}}
+
+QMessageBox, QInputDialog, QFileDialog {{
+    background-color: {bg_surface};
+}}
+
+QMessageBox QLabel, QInputDialog QLabel, QFileDialog QLabel {{
+    color: {text_primary};
+    font-size: 12px;
+}}
+
+/* Botonera de los diálogos */
+QDialogButtonBox QPushButton {{
+    min-width: 84px;
+    padding: 4px 10px;
+}}
+
+/* Campos de texto de los diálogos */
+QInputDialog QLineEdit, QFileDialog QLineEdit {{
+    background-color: {bg_input};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 3px 6px;
+}}
+
+QInputDialog QLineEdit:focus, QFileDialog QLineEdit:focus {{
+    border: 1px solid {primary};
+}}
+
+/* Desplegables ("Buscar en", codificación, etc.) */
+QFileDialog QComboBox, QInputDialog QComboBox {{
+    background-color: {bg_input};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 2px 6px;
+}}
+
+QFileDialog QComboBox QAbstractItemView {{
+    background-color: {bg_surface};
+    color: {text_primary};
+    selection-background-color: {table_selected_bg};
+    selection-color: {table_selected_text};
+}}
+
+/* Listado y árbol de ficheros */
+QFileDialog QTreeView, QFileDialog QListView {{
+    background-color: {bg_base};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    selection-background-color: {table_selected_bg};
+    selection-color: {table_selected_text};
+}}
+
+QFileDialog QHeaderView::section {{
+    background-color: {bg_surface};
+    color: {text_primary};
+    border: none;
+    border-right: 1px solid {border_base};
+    border-bottom: 1px solid {border_base};
+    padding: 4px 6px;
+}}
+
+/* Botones de navegación laterales (Atrás / Adelante / Nueva carpeta) */
+QFileDialog QToolButton {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px;
+}}
+
+QFileDialog QToolButton:hover {{
+    background-color: {bg_hover};
+    border: 1px solid {border_base};
+}}
+
+QFileDialog QSplitter::handle {{
+    background-color: {border_base};
+}}
+
+
+/* =======================================================================
+   Banner de aviso del auto-nombrador (usa el token semántico `warning`)
+   ======================================================================= */
+QLabel#autoNamerAlertMsg {{
+    font-size: 11px;
+    font-weight: 600;
+    color: {warning};
+}}
+
+QTableView#markupsTableView {{
+    background-color: {bg_base};
+    color: {text_primary};
+    border: none;
+    gridline-color: transparent;
+    selection-background-color: rgba(2, 132, 199, 0.25);
+    selection-color: {text_primary};
+}}
+
+QTableView#markupsTableView::item {{
+    padding: 3px 6px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}}
+
+QTableView#markupsTableView::item:selected {{
+    background-color: rgba(2, 132, 199, 0.28);
+    color: {text_primary};
+}}
+
+/* Acotado al panel: sin esto afectaría a TODAS las cabeceras de la aplicación */
+QWidget#markupsPanel QHeaderView::section {{
+    background-color: {bg_surface};
+    color: {text_primary};
+    padding: 4px 6px;
+    border: none;
+    border-right: 1px solid {border_base};
+    border-bottom: 1px solid {border_base};
+    font-weight: 600;
+    font-size: 11px;
+}}
+
+QLineEdit#markupsSearchInput {{
+    background-color: {bg_input};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+}}
+
+QToolButton#markupsBtnClose {{
+    background-color: transparent;
+    color: {text_primary};
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+}}
+
+QToolButton#markupsBtnClose:hover {{
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #EF4444;
+}}
+
+
+/* =======================================================================
+   Panel lateral del proyecto (sidebar)
+   ======================================================================= */
+QLabel#sidebarEmptyTitle {{
+    font-weight: bold;
+    font-size: 12px;
+}}
+
+QLabel#sidebarEmptyHint {{
+    font-size: 11px;
+    color: {text_secondary};
+}}
+
+QLabel#sidebarSectionTitle {{
+    font-weight: bold;
+    font-size: 11px;
+    color: {text_secondary};
+}}
+
+QLabel#sidebarSectionTitleCaps {{
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: {text_secondary};
+}}
+
+QPushButton#recentProjectButton {{
+    text-align: left;
+    padding: 4px 6px;
+    font-size: 11px;
+}}
+
+
+/* =======================================================================
+   Lienzo del visor de planos
+   ======================================================================= */
+QGraphicsView#planCanvas {{
+    background-color: {bg_canvas};
+    border: none;
+}}
+
+
+/* =======================================================================
+   Inspector de Propiedades + etiquetas de campo del panel
+   Regla 4: estilo centralizado (sin setStyleSheet inline en las vistas).
+   ======================================================================= */
+QWidget#propertyInspector {{
+    background-color: {bg_surface};
+    border-left: 1px solid {border_base};
+}}
+QFrame#inspectorHeader {{
+    border-bottom: 1px solid {border_base};
+    background-color: {bg_surface};
+}}
+QFrame#inspectorCard {{
+    background-color: {bg_base};
+    border: 1px solid {border_base};
+    border-radius: 6px;
+}}
+QLabel#cardTitle {{
+    color: {primary};
+    letter-spacing: 0.5px;
+}}
+QLabel#typeBadge {{
+    background-color: {primary};
+    color: {text_on_primary};
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 10px;
+}}
+QLabel#annotIdLabel {{
+    color: {text_secondary};
+    font-family: monospace;
+    font-size: 11px;
+}}
+QFrame#tagChip {{
+    background-color: {bg_input};
+    border: 1px solid {border_base};
+    border-radius: 10px;
+}}
+QTextEdit#contentEdit, #propertyInspector QLineEdit, #propertyInspector QComboBox {{
+    background-color: {bg_input};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 4px 6px;
+}}
+QTextEdit#contentEdit:focus, #propertyInspector QLineEdit:focus, #propertyInspector QComboBox:focus {{
+    border-color: {primary};
+}}
+/* Deslizadores estilizados de alta visibilidad */
+#propertyInspector QSlider {{
+    min-height: 24px;
+}}
+#propertyInspector QSlider::groove:horizontal {{
+    border: none;
+    height: 6px;
+    background-color: rgba(128, 128, 128, 0.35);
+    border-radius: 3px;
+}}
+#propertyInspector QSlider::sub-page:horizontal {{
+    background-color: {primary};
+    border-radius: 3px;
+}}
+#propertyInspector QSlider::handle:horizontal {{
+    background-color: #FFFFFF;
+    border: 2px solid {primary};
+    width: 14px;
+    height: 14px;
+    margin: -4px 0;
+    border-radius: 7px;
+}}
+#propertyInspector QSlider::handle:horizontal:hover {{
+    background-color: #FFFFFF;
+    border: 2px solid {primary_hover};
+}}
+#propertyInspector QSlider::handle:horizontal:pressed {{
+    background-color: {primary};
+    border: 2px solid #FFFFFF;
+}}
+
+/* SpinBoxes numéricos */
+#propertyInspector QSpinBox {{
+    background-color: {bg_input};
+    color: {text_primary};
+    border: 1px solid {border_base};
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    min-height: 22px;
+}}
+#propertyInspector QSpinBox:focus {{
+    border: 1.5px solid {primary};
+}}
+#propertyInspector QSpinBox::up-button, #propertyInspector QSpinBox::down-button {{
+    width: 14px;
+    background-color: {bg_button};
+    border: none;
+    border-radius: 2px;
+    margin: 1px;
+}}
+#propertyInspector QSpinBox::up-button:hover, #propertyInspector QSpinBox::down-button:hover {{
+    background-color: {bg_button_hover};
+}}
+#propertyInspector QPushButton#dangerButton {{
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}}
+#propertyInspector QPushButton#dangerButton:hover {{
+    background-color: #EF4444;
+    color: white;
+}}
+
+/* --- Etiquetas de campo y chips del Inspector de Propiedades ---
+   Migradas desde setStyleSheet() inline (Regla 4). */
+#propertyInspector QLabel#propFieldLabel {{
+    font-weight: 500;
+    font-size: 11px;
+}}
+#propertyInspector QLabel#propHintLabel {{
+    opacity: 0.7;
+}}
+#propertyInspector QLabel#propMetaLabel {{
+    font-size: 10px;
+    opacity: 0.65;
+}}
+#propertyInspector QLabel#tagChipLabel {{
+    font-size: 11px;
+}}
+#propertyInspector QToolButton#tagChipRemove {{
+    border: none;
+    background: transparent;
+    font-size: 9px;
+    opacity: 0.7;
+}}
