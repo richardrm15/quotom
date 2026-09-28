@@ -49,7 +49,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 def parse_color(c, default=None):
@@ -841,7 +841,7 @@ class MarkupsPanel(QWidget):
         Reaplica el tema al panel (Methods Down).
 
         Todo el estilo (panel, toolbar, tabla, cabeceras, buscador y botón de
-        cierre) vive en ``ui/styles/theme.qss``; aquí solo se fuerza un
+        cierre) vive en ``common/styles/theme.qss``; aquí solo se fuerza un
         *repolish* para que Qt reevalúe la hoja global.
         """
         self.style().unpolish(self)

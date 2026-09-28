@@ -16,7 +16,7 @@ from PySide6.QtCore import QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QAbstractButton, QWidget
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 _BORDER_SUBTLE = QColor(128, 128, 128, 90)
 _DANGER = QColor("#EF4444")

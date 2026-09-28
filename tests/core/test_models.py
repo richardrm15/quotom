@@ -1,7 +1,7 @@
 """
 Tests de `core/models.py` — modelos de dominio puros.
 
-Deben poder ejecutarse **sin iniciar Qt** (Regla 20).
+Deben poder ejecutarse **sin iniciar Qt** (R20).
 """
 from __future__ import annotations
 
@@ -120,7 +120,7 @@ def test_helpers_de_colecciones():
 
 
 def test_models_no_importa_qt():
-    """Guardarraíl: `core/models.py` es dominio puro (Regla 3/20)."""
+    """Guardarraíl: `core/models.py` es dominio puro (R1/15 y R20)."""
     from tests.support import imported_top_level_modules
 
     import core.models as module

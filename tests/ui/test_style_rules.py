@@ -1,8 +1,8 @@
 """
-Guardarraíl de la Regla 4 (estilos centralizados).
+Guardarraíl de la R16/17 (estilos centralizados).
 
 **Sprint P0 completado**: no queda ningún archivo con QSS inline. Todo el estilo
-vive en ``ui/styles/theme.qss`` (o en ``style_manager.py``, único punto autorizado
+vive en ``common/styles/theme.qss`` (o en ``style_manager.py``, único punto autorizado
 a construir y aplicar la hoja).
 
 El trinquete se mantiene para que **no pueda volver**:
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from tests.support import PROJECT_ROOT, run_standalone
 
-# Archivos migrados a ui/styles/theme.qss (deben tener 0 llamadas inline).
+# Archivos migrados a common/styles/theme.qss (deben tener 0 llamadas inline).
 MIGRATED = [
     "common/widgets/property_inspector.py",
     "common/widgets/color_swatch_button.py",
@@ -34,7 +34,7 @@ MIGRATED = [
 PENDING: dict[str, int] = {}
 
 # Único punto autorizado para aplicar el QSS global.
-ALLOWED = "ui/styles/style_manager.py"
+ALLOWED = "common/styles/style_manager.py"
 
 
 def _count(relative_path: str) -> int:
@@ -45,7 +45,7 @@ def _count(relative_path: str) -> int:
 def test_archivos_migrados_sin_setStyleSheet():
     """Los archivos ya migrados no deben contener QSS inline."""
     offenders = {rel: _count(rel) for rel in MIGRATED if _count(rel) > 0}
-    assert not offenders, f"Regla 4 violada en archivos migrados: {offenders}"
+    assert not offenders, f"R16/17 violada en archivos migrados: {offenders}"
 
 
 def test_pendientes_no_superan_el_presupuesto():
@@ -55,7 +55,7 @@ def test_pendientes_no_superan_el_presupuesto():
         for rel, budget in PENDING.items()
         if _count(rel) > budget
     }
-    assert not over, f"Regla 4: presupuesto superado (actual, max): {over}"
+    assert not over, f"R16/17: presupuesto superado (actual, max): {over}"
 
 
 def test_ningun_archivo_nuevo_usa_qss_inline():
@@ -78,7 +78,7 @@ def test_ningun_archivo_nuevo_usa_qss_inline():
             if n > 0:
                 offenders[rel] = n
     assert not offenders, (
-        f"QSS inline en archivos no migrados (usa ui/styles/theme.qss): {offenders}"
+        f"QSS inline en archivos no migrados (usa common/styles/theme.qss): {offenders}"
     )
 
 
@@ -95,7 +95,7 @@ def test_theme_qss_se_sustituye_por_completo():
     **sin estilos y en silencio**. Este test lo convierte en un fallo ruidoso.
     """
     from tests.support import app
-    from ui.styles.style_manager import DARK_TOKENS, LIGHT_TOKENS, build_qss
+    from common.styles.style_manager import DARK_TOKENS, LIGHT_TOKENS, build_qss
 
     _ = app()
     for tokens, mode in ((DARK_TOKENS, "dark"), (LIGHT_TOKENS, "light")):
@@ -106,7 +106,7 @@ def test_theme_qss_se_sustituye_por_completo():
 
 def test_tokens_de_estado_existen():
     """Los colores semánticos de estado forman parte del contrato de tokens."""
-    from ui.styles.style_manager import DARK_TOKENS, LIGHT_TOKENS
+    from common.styles.style_manager import DARK_TOKENS, LIGHT_TOKENS
 
     for tokens in (DARK_TOKENS, LIGHT_TOKENS):
         assert tokens.error and tokens.success, "faltan tokens error/success"
@@ -114,7 +114,7 @@ def test_tokens_de_estado_existen():
 
 def test_sin_emojis_en_el_codigo():
     """
-    **Convención del proyecto**: la interfaz usa la fábrica de iconos de ``ui/icons/``,
+    **Convención del proyecto**: la interfaz usa la fábrica de iconos de ``common/icons/``,
     nunca emojis.
 
     Motivos (verificado en el bug del panel de marcas):

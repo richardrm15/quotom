@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QIcon
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class ProjectSidebar(QWidget):

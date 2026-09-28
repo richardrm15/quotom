@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 from common.widgets.title_bar import CustomTitleBar
 from common.widgets.window_resizer import WindowResizeFilter
 from common.pdf.pdf_renderer import calculate_optimal_scale
@@ -746,7 +746,7 @@ class AutoNamerDialog(QDialog):
         """
         Reaplica el tema al diálogo (Methods Down).
 
-        Todo su estilo vive en ``ui/styles/theme.qss``; aquí solo se refresca el
+        Todo su estilo vive en ``common/styles/theme.qss``; aquí solo se refresca el
         icono del banner de aviso, que es un *pixmap* dependiente del tema.
         """
         self._alert_banner.refresh_icon()

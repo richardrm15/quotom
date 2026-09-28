@@ -1,8 +1,8 @@
 /* =========================================================================
-   ui/styles/theme.qss
+   common/styles/theme.qss
    Hoja de estilos centralizada (Single Source of Truth visual).
    Los marcadores entre llaves simples los sustituye ThemeManager
-   (ui/styles/style_manager.py) con los tokens del tema activo.
+   (common/styles/style_manager.py) con los tokens del tema activo.
    NO hardcodear estilos en las vistas.
    ========================================================================= */
 

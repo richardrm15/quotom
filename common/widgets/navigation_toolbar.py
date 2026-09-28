@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from common.widgets.page_entry import PageEntryWidget
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class NavigationToolBar(QWidget):

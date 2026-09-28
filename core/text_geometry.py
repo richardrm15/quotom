@@ -14,7 +14,7 @@ consumo donde se leen rectángulos, que es donde un renombrado masivo (``.x()`` 
 ``.x``) introduciría fallos silenciosos en código sin cobertura de tests.
 
 La conversión a tipos Qt es explícita y se hace en la frontera con
-``ui.helpers.qt_geometry`` (``to_qrectf`` / ``to_qpointf``).
+``common.helpers.qt_geometry`` (``to_qrectf`` / ``to_qpointf``).
 
 Los ``Protocol`` ``PointLike`` y ``RectLike`` documentan el tipado estructural: los
 consumidores pueden seguir pasando ``QPointF``/``QRectF`` reales a las funciones de

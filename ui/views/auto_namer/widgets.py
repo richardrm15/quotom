@@ -6,7 +6,7 @@ Vivían construidos a mano dentro de ``AutoNamerDialog._init_ui`` (194 líneas) 
 identidad propia, estado propio y señales propias: el diálogo se limita a
 colocarlos y a reaccionar.
 
-Todo su aspecto vive en ``ui/styles/theme.qss`` (objectNames ``autoNamer*``).
+Todo su aspecto vive en ``common/styles/theme.qss`` (objectNames ``autoNamer*``).
 """
 
 from PySide6.QtCore import Qt, Signal
@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class AlertBanner(QFrame):
@@ -68,7 +68,7 @@ class AlertBanner(QFrame):
         Repinta el icono de aviso con el token ``warning``.
 
         Es un *pixmap* dependiente del tema, así que hay que refrescarlo cada vez
-        que el tema cambia. Sin emojis: icono vectorial de ``ui/icons``.
+        que el tema cambia. Sin emojis: icono vectorial de ``common/icons``.
         """
         color = ThemeManager.tokens().warning
         self._icon.setPixmap(

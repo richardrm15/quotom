@@ -26,7 +26,7 @@ if "QT_LOGGING_RULES" not in os.environ:
 from PySide6.QtWidgets import QApplication
 
 from core.settings import settings
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 from ui.views.main_window.controller import MainWindowController
 from ui.views.main_window.view import MainWindowView
 

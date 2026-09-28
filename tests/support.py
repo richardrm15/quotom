@@ -158,7 +158,7 @@ def apply_theme_once(mode: str = "dark") -> None:
     if _theme_applied:
         return
 
-    from ui.styles.style_manager import ThemeManager
+    from common.styles.style_manager import ThemeManager
 
     ThemeManager.apply_theme(mode)
     _theme_applied = True

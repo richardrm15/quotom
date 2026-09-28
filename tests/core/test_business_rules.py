@@ -85,7 +85,7 @@ def test_normalize_style_iso_delega_en_la_regla_de_color():
 
 
 def test_business_rules_no_importa_qt():
-    """Guardarraíl: `core/business_rules.py` es dominio puro (Regla 3/20)."""
+    """Guardarraíl: `core/business_rules.py` es dominio puro (R1/15 y R20)."""
     import core.business_rules as module
 
     prohibidos = {"PySide6", "PyQt5", "PyQt6"}

@@ -2,7 +2,7 @@
 Utilidades de geometría pura del dominio (sin Qt).
 
 El auto-ajuste de texto que necesita fuentes de Qt vive en
-``ui.helpers.text_metrics`` (reglas 3/10/15/20).
+``common.helpers.text_metrics`` (reglas 3/10/15/20).
 """
 from __future__ import annotations
 

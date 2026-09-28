@@ -6,7 +6,7 @@ from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QUndoStack
 from PySide6.QtWidgets import QMenuBar, QMenu
 
 from core.settings import settings
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class AppMenuBar(QMenuBar):

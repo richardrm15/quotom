@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
 )
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 class WindowControlButton(QPushButton):
     """Botón de control de ventana (minimizar, maximizar, cerrar) con dibujo vectorial nativo."""
@@ -170,7 +170,9 @@ class CustomTitleBar(QWidget):
             sync_active = getattr(self._window, "_sync_with_parent", False)
             handle = self._window.windowHandle()
 
-            if self.system_move_enabled and not sync_active and handle and hasattr(handle, "startSystemMove"):
+            # `startSystemMove` existe desde Qt 5.15 (el proyecto exige PySide6 >= 6.6):
+            # no se comprueba la capacidad, solo que haya ventana nativa.
+            if self.system_move_enabled and not sync_active and handle:
                 if handle.startSystemMove():
                     event.accept()
                     return
@@ -183,7 +185,7 @@ class CustomTitleBar(QWidget):
             sync_active = getattr(self._window, "_sync_with_parent", False)
             handle = self._window.windowHandle()
 
-            if sync_active or not (handle and hasattr(handle, "startSystemMove")):
+            if sync_active or not handle:
                 self._window.move(event.globalPosition().toPoint() - self._drag_pos)
             event.accept()
 

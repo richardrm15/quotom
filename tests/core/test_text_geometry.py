@@ -1,7 +1,7 @@
 """
 Tests de `core/text_geometry.py` — geometría pura del dominio.
 
-Se ejecutan **sin Qt** (Regla 3/20): verifican que los tipos puros replican la
+Se ejecutan **sin Qt** (R1/15 y R20): verifican que los tipos puros replican la
 semántica de `QRectF`/`QPointF` y que `core/` ya no depende de PySide6.
 """
 from __future__ import annotations

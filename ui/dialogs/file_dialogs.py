@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QFileDialog, QWidget
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 __all__ = ["ANY_FILE", "PDF_FILES", "open_files", "save_file", "select_directory"]
 

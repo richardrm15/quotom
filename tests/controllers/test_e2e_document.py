@@ -15,7 +15,7 @@ import tempfile
 
 from tests.support import app, run_standalone
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 PDF_GLOBS = (
     "/home/richard/Documents/BMSBidSuite/pdf-examples/*.pdf",

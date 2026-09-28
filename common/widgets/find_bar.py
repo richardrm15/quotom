@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QFrame,
 )
 from PySide6.QtGui import QKeyEvent
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class FindBar(QFrame):
@@ -99,7 +99,7 @@ class FindBar(QFrame):
         Refresca los elementos no declarativos del widget.
 
         El estilo (marco, input, botones y contador) vive íntegramente en
-        ``ui/styles/theme.qss``; aquí solo se actualizan los pixmap/iconos, que
+        ``common/styles/theme.qss``; aquí solo se actualizan los pixmap/iconos, que
         dependen del tema de forma no expresable en QSS.
         """
         self._lbl_icon.setPixmap(ThemeManager.get_icon("search", size=16).pixmap(16, 16))

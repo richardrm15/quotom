@@ -17,7 +17,7 @@ from ui.dialogs import about, ask_text, confirm, error, info, warn
 # Widgets compartidos y estilos
 from common.widgets.annotation_item import AnnotationGraphicsItem
 from common.widgets.page_manager import PageManagerWindow
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 # Controladores de la feature principal
 from ui.views.main_window.project_controller import ProjectController
@@ -446,14 +446,16 @@ class MainWindowController(QObject):
 
     def _on_copy_requested(self) -> None:
         focus = QApplication.focusWidget()
-        if hasattr(focus, "copy") and type(focus).__name__ in ("QLineEdit", "QTextEdit", "QPlainTextEdit"):
+        # Solo los campos de texto tienen `copy`; el tipo lo garantiza (no hay que
+        # sondear la capacidad).
+        if type(focus).__name__ in ("QLineEdit", "QTextEdit", "QPlainTextEdit"):
             focus.copy()
             return
         self._annot_ctrl.copy_selection()
 
     def _on_paste_requested(self) -> None:
         focus = QApplication.focusWidget()
-        if hasattr(focus, "paste") and type(focus).__name__ in ("QLineEdit", "QTextEdit", "QPlainTextEdit"):
+        if type(focus).__name__ in ("QLineEdit", "QTextEdit", "QPlainTextEdit"):
             focus.paste()
             return
         self._annot_ctrl.paste_selection()

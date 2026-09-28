@@ -29,7 +29,7 @@ from common.widgets.title_bar import CustomTitleBar
 from common.widgets.window_resizer import WindowResizeFilter, ResizeGrip
 from common.widgets.property_inspector import PropertyInspector
 from common.widgets.markups_panel import MarkupsPanel
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class MainWindowView(QMainWindow):

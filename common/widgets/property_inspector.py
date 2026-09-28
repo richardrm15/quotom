@@ -123,7 +123,7 @@ class FlowLayout(QLayout):
 
         return y + line_height - rect.y()
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 from common.widgets.color_swatch_button import ColorSwatchButton
 
@@ -2116,7 +2116,7 @@ class PropertyInspector(QWidget):
 
     def apply_theme(self):
         """Actualiza los elementos dinámicos tras un cambio de tema."""
-        # El estilo estático vive centralizado en ui/styles/theme.qss (Regla 4);
+        # El estilo estático vive centralizado en common/styles/theme.qss (R16/17);
         # aquí solo se refrescan los elementos pintados/dependientes del tema.
         if hasattr(self, "_current_stroke_color"):
             self._update_stroke_swatch_selection(self._current_stroke_color)

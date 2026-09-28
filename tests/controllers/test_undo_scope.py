@@ -13,7 +13,7 @@ from tests.support import app, run_standalone
 
 from PySide6.QtGui import QUndoCommand
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 from ui.views.main_window.controller import MainWindowController
 from ui.views.main_window.view import MainWindowView
 

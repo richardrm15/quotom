@@ -1,372 +1,824 @@
 #!/usr/bin/env python3
 """
-Auditoría de arquitectura de Quotom (v2 — estándar de 22 reglas).
+Auditoría de arquitectura de Quotom.
 
-Verifica el cumplimiento de "Arquitectura Modular Desacoplada":
-
-  Reglas 1, 4        Acoplamiento de vistas (parent / parentWidget / window)
-  Reglas 2, 8-13     QUndoCommand canónico; commands sin widgets ni inspección
-  Reglas 3, 10, 15, 20  core/ sin Qt, sin Signals, sin objetos gráficos
-  Reglas 5, 6        view.py sin SQL ni acceso a database
-  Reglas 7, 14       Vistas hermanas no se conocen entre sí
-  Regla  9           Lógica de negocio en core/services y core/business_rules
-  Regla  16          Tests organizados por capa
-  Regla  17          Sin inspección dinámica de dependencias
-  Reglas 18, 19      Estilos centralizados; sin setStyleSheet disperso
-  Regla  21          Iconos vía ui.icons.get_icon()
-  Estructura         Árbol objetivo (core/services, tests/{core,commands,controllers}...)
+Comprueba las **22 reglas obligatorias** de `docs/ESPECIFICACION_ARQUITECTURA.md` §20
+(R1…R22). El documento es la autoridad: su §22 define **qué se audita, con qué tipo de
+verificación (automática / informativa / manual) y cómo se aplican las excepciones**.
 
 Uso:
-    python3 tools/audit_rules.py            # informe completo
-    python3 tools/audit_rules.py --resumen  # solo contadores
+    python3 tools/audit_rules.py                       # informe completo
+    python3 tools/audit_rules.py --resumen             # solo contadores
+    python3 tools/audit_rules.py --json                # salida máquina
+    python3 tools/audit_rules.py --baseline f.json     # compara con una línea base
+    python3 tools/audit_rules.py --guardar f.json      # escribe la línea base actual
 
-Criterio de refactor: cada contador debe BAJAR, nunca subir.
+Código de salida:
+    0   sin hallazgos, o todo dentro de la línea base
+    1   algún contador ha SUBIDO respecto a la línea base
+    2   error de uso
+
+Reglas de este programa:
+  * No tiene efectos al importarse: todo ocurre dentro de `main()`.
+  * Cada chequeo dice **qué mira** y **dónde**, y declara sus excepciones con motivo.
+  * Lo que no puede medirse se declara **manual**; nunca se cuenta como si se midiera.
 """
+
 from __future__ import annotations
 
+import argparse
 import ast
+import json
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-EXCLUDE = {"env", "__pycache__", "build", "dist", ".git", ".pytest_cache"}
 
-COUNTS: dict[str, int] = {}
+# --------------------------------------------------------------------------
+# Alcance (spec §22.1)
+# --------------------------------------------------------------------------
 
+EXCLUIDOS = {"env", "__pycache__", "build", "dist", ".git", ".pytest_cache", ".cache"}
 
-# Excepciones justificadas y documentadas (ver AUDIT_V2_REPORT.md §8).
-JUSTIFIED_EXCEPTIONS = {
-    "project_editor/view.py":
-        "el canvas (PlanGraphicsView) es un widget compartido por 2 features (Regla 19)",
-    "auto_namer/commands.py":
-        "el auto-nombrador no crea comandos: devuelve el mapeo de nombres y el gestor "
-        "de páginas (con su propio QUndoStack) es quien los aplica",
-    "common/pdf/":
-        "soporte PDF/caché compartido; el spec solo describe common/widgets y common/commands",
+RUTAS_DOMINIO = ("core",)          # R1, R15, R21
+RUTAS_COMPARTIDAS = ("common",)    # R7, R13, R14, R16-19
+RUTAS_UI = ("ui",)                 # R2-R4, R7, R8, R13, R14, R16-18
+TESTS = "tests"                    # organización (R20)
+
+#: Módulos de UI por encima de este tamaño se consideran sospechosos de contener
+#: lógica que no les corresponde (R8). Es un indicador, no una medida exacta.
+LIMITE_MODULO_UI = 400
+
+#: Métodos/nombres que delatan manipulación de widgets desde un comando (R14).
+NOMBRES_DE_WIDGET = {
+    "QtWidgets", "QMessageBox", "QInputDialog", "QFileDialog", "QDialog",
+    "QWidget", "QTableWidget", "QTableWidgetItem", "QStatusBar", "QToolBar",
+    "setText", "setHtml", "setVisible", "setEnabled", "setDisabled", "setChecked",
+    "setIcon", "setStyleSheet", "setWindowTitle", "setToolTip", "setStatusTip",
+    "addWidget", "addItem", "addRow", "insertRow", "setItem", "setRowCount",
+    "setColumnCount", "setCurrentIndex", "setValue", "setRange", "setMaximum",
+    "showMessage", "warning", "information", "critical", "show", "hide",
+    "_sidebar", "_status_bar", "statusBar", "_table_view",
 }
 
+#: Objetos gráficos de Qt que no pueden formar parte del modelo de dominio (R21).
+NOMBRES_GRAFICOS = {
+    "QColor", "QBrush", "QPen", "QFont", "QIcon", "QImage", "QPixmap", "QPainter",
+    "QPainterPath", "QPolygon", "QTransform", "QCursor", "QBitmap",
+}
 
-def py_files(base: Path):
-    """Genera los .py del árbol dado, excluyendo entornos y artefactos de build."""
-    for path in sorted(base.rglob("*.py")):
-        if any(part in EXCLUDE for part in path.parts):
+#: Excepciones justificadas (spec §22.3). Cada una lleva **qué** y **por qué**.
+#:
+#: Nota importante: las "guardas de capacidad" (`hasattr(obj, "metodo")` para saber si
+#: la versión de Qt soporta algo) **no** se exceptúan. `requirements.txt` fija
+#: PySide6 >= 6.6, así que capacidades como `setColorScheme` (Qt 6.5) o
+#: `startSystemMove` (Qt 5.15) están garantizadas: la guarda es código muerto y cuenta
+#: como violación.
+EXCEPCIONES_R13: dict[tuple[str, str], str] = {}
+EXCEPCIONES_R14: dict[tuple[str, str], str] = {}
+EXCEPCIONES_R16 = {
+    "common/styles/style_manager.py":
+        "único punto autorizado para generar y aplicar QSS en toda la aplicación",
+}
+
+# --------------------------------------------------------------------------
+# Estructuras
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class Hallazgo:
+    """Un incumplimiento concreto."""
+
+    archivo: str
+    linea: int
+    mensaje: str
+
+    def __str__(self) -> str:
+        return f"{self.archivo}:{self.linea}  {self.mensaje}"
+
+
+@dataclass
+class Regla:
+    """Metadatos de una regla del spec, según su §22.2."""
+
+    id: str
+    titulo: str
+    tipo: str                      # "auto" | "informativa" | "manual"
+    revisa: str                    # qué mira y dónde
+    hallazgos: list[Hallazgo] = field(default_factory=list)
+    notas: list[str] = field(default_factory=list)
+
+    @property
+    def cuenta(self) -> int:
+        """Número de hallazgos (solo tiene sentido en reglas automáticas)."""
+        return len(self.hallazgos)
+
+
+# --------------------------------------------------------------------------
+# Utilidades
+# --------------------------------------------------------------------------
+
+
+def archivos(base, nombre: str = "*.py") -> list[Path]:
+    """Módulos `.py` de una ruta del proyecto, saltando entornos y cachés."""
+    raiz = ROOT / base if isinstance(base, str) else base
+    if not raiz.exists():
+        return []
+    return sorted(
+        p for p in raiz.rglob(nombre)
+        if not any(parte in EXCLUIDOS for parte in p.parts)
+    )
+
+
+def arboles(rutas) -> list[tuple[Path, ast.Module]]:
+    """Pares (archivo, AST) de los módulos indicados, ignorando los que no compilan."""
+    salida = []
+    for p in rutas:
+        try:
+            salida.append((p, ast.parse(p.read_text(encoding="utf-8"))))
+        except (OSError, SyntaxError):
             continue
-        yield path
+    return salida
 
 
-def rel(path: Path) -> str:
+def relativo(p: Path) -> str:
     """Ruta relativa al proyecto."""
     try:
-        return str(path.relative_to(ROOT))
+        return str(p.relative_to(ROOT))
     except ValueError:
-        return str(path)
+        return str(p)
 
 
-def grep(files, pattern: str, flags: int = 0):
-    """Busca un patrón regex línea a línea y devuelve (archivo, línea, texto)."""
-    rx = re.compile(pattern, flags)
-    hits = []
-    for f in files:
-        try:
-            text = f.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        for i, line in enumerate(text.splitlines(), 1):
-            if rx.search(line):
-                hits.append((rel(f), i, line.strip()[:110]))
-    return hits
+def lineas(p: Path) -> list[str]:
+    """Líneas del archivo (vacío si no se puede leer)."""
+    try:
+        return p.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
 
 
-def ast_refs_prefix(files, prefixes: tuple[str, ...]):
+def busca(rutas, patron: str, flags: int = 0) -> list[Hallazgo]:
     """
-    Referencias **reales** (AST) a identificadores que empiezan por algún prefijo.
+    Busca un patrón **línea a línea** y devuelve hallazgos.
 
-    Se usa para familias de clases como ``QGraphics*`` sin depender de listas fijas.
+    Se usa cuando el criterio depende del texto (SQL dentro de una cadena, QSS…),
+    no de la estructura del código.
+    """
+    rx = re.compile(patron, flags)
+    encontrados = []
+    for p in rutas:
+        for i, l in enumerate(lineas(p), 1):
+            if rx.search(l):
+                encontrados.append(Hallazgo(relativo(p), i, l.strip()[:100]))
+    return encontrados
+
+
+def referencias(nodos, nombres: set[str], incluir_import: bool = True) -> list[tuple[int, str]]:
+    """Líneas donde aparecen los nombres dados (AST: ignora comentarios y docstrings)."""
+    encontrados = []
+    for n in ast.walk(nodos):
+        if isinstance(n, ast.Name) and n.id in nombres:
+            encontrados.append((n.lineno, f"usa {n.id}"))
+        elif isinstance(n, ast.Attribute) and n.attr in nombres:
+            encontrados.append((n.lineno, f"usa .{n.attr}"))
+        elif incluir_import and isinstance(n, (ast.Import, ast.ImportFrom)):
+            for alias in n.names:
+                if alias.name.split(".")[0] in nombres or alias.name in nombres:
+                    encontrados.append((n.lineno, f"importa {alias.name}"))
+    return encontrados
+
+
+def clases_que_heredan(nodos, base: str) -> list[ast.ClassDef]:
+    """Clases que heredan de `base` (comparando por nombre)."""
+    salida = []
+    for n in ast.walk(nodos):
+        if isinstance(n, ast.ClassDef) and any(
+            (isinstance(b, ast.Name) and b.id == base)
+            or (isinstance(b, ast.Attribute) and b.attr == base)
+            for b in n.bases
+        ):
+            salida.append(n)
+    return salida
+
+
+def es_llamada(nodo, nombres: set[str]) -> bool:
+    """¿Es una llamada a alguno de esos nombres (función o método)?"""
+    if not isinstance(nodo, ast.Call):
+        return False
+    f = nodo.func
+    return (isinstance(f, ast.Name) and f.id in nombres) or (
+        isinstance(f, ast.Attribute) and f.attr in nombres
+    )
+
+# --------------------------------------------------------------------------
+# Chequeos — dominio (R1, R15, R21) y vistas (R2, R3, R4, R7)
+# --------------------------------------------------------------------------
+
+QT_RAICES = {"PySide6", "PyQt5", "PyQt6"}
+
+
+def chequeo_r1(base: Path = ROOT) -> list[Hallazgo]:
+    """R1 — `core/` no importa PySide6 (ni PyQt)."""
+    salida: list[Hallazgo] = []
+    for p, t in arboles(archivos(base / "core")):
+        for n in ast.walk(t):
+            if isinstance(n, (ast.Import, ast.ImportFrom)):
+                modulos = [a.name for a in n.names]
+                if isinstance(n, ast.ImportFrom) and n.module:
+                    modulos.append(n.module)
+                if any(m.split(".")[0] in QT_RAICES for m in modulos):
+                    salida.append(Hallazgo(relativo(p), n.lineno, "importa Qt en el dominio"))
+    return salida
+
+
+def chequeo_r15(base: Path = ROOT) -> list[Hallazgo]:
+    """R15 — `core/` no utiliza `Signal` de Qt."""
+    return [
+        Hallazgo(relativo(p), i, msg)
+        for p, t in arboles(archivos(base / "core"))
+        for i, msg in referencias(t, {"Signal"}, incluir_import=True)
+    ]
+
+
+def chequeo_r21(base: Path = ROOT) -> list[Hallazgo]:
+    """R21 — ningún objeto gráfico de Qt forma parte del modelo de dominio."""
+    return [
+        Hallazgo(relativo(p), i, msg)
+        for p, t in arboles(archivos(base / "core"))
+        for i, msg in referencias(t, NOMBRES_GRAFICOS, incluir_import=True)
+    ]
+
+
+# SQL: se exige la **estructura** de la sentencia (dos palabras clave), para no
+# confundir un método `self.update()` con una consulta. Insensible a mayúsculas,
+# porque en Python las consultas suelen escribirse en minúsculas.
+PATRON_SQL = (
+    r"\b(delete\s+from|insert\s+into|create\s+table|drop\s+table"
+    r"|update\s+\w+\s+set|select\b[^\n]{0,120}?\bfrom\b)\b"
+)
+
+
+def vistas(base: Path = ROOT) -> list[Path]:
+    """Todos los `view.py` del proyecto (el alcance de R2/R3/R6)."""
+    return [p for p in archivos(base / "ui") if p.name == "view.py"]
+
+
+def chequeo_r2(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R2 — `view.py` no contiene SQL.
+
+    Limitación conocida: la búsqueda es por línea, así que una consulta partida en
+    varias líneas podría no detectarse. Se prefiere quedarse corto antes que marcar
+    falsos positivos por palabras sueltas.
+    """
+    return busca(vistas(base), PATRON_SQL, re.IGNORECASE)
+
+
+def chequeo_r3(base: Path = ROOT) -> list[Hallazgo]:
+    """R3 — `view.py` no accede directamente a la base de datos."""
+    return busca(vistas(base), r"core\.database|DatabaseManager|\bimport\s+database\b")
+
+
+def chequeo_r4(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R4 — las vistas no llaman `parent()` / `parentWidget()` / `window()`.
+
+    Se comprueba con AST: solo cuentan **llamadas** sobre `self`, no menciones en
+    comentarios ni docstrings.
+    """
+    salida: list[Hallazgo] = []
+    for p, t in arboles(archivos(base / "ui") + archivos(base / "common")):
+        for n in ast.walk(t):
+            if not isinstance(n, ast.Call) or not isinstance(n.func, ast.Attribute):
+                continue
+            if n.func.attr not in {"parent", "parentWidget", "window"}:
+                continue
+            receptor = n.func.value
+            if isinstance(receptor, ast.Name) and receptor.id == "self":
+                salida.append(Hallazgo(relativo(p), n.lineno, f"self.{n.func.attr}()"))
+    return salida
+
+
+def features(base: Path = ROOT) -> list[str]:
+    """Nombres de las features de `ui/views/`."""
+    vistas_ui = base / "ui" / "views"
+    if not vistas_ui.is_dir():
+        return []
+    return sorted(d.name for d in vistas_ui.iterdir()
+                  if d.is_dir() and d.name != "__pycache__")
+
+
+def chequeo_r7(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R7 — las vistas hermanas no se conocen entre sí.
+
+    Ninguna feature de `ui/views/` puede importar de otra. Sin listas blancas: si dos
+    features necesitan compartir algo, ese algo pertenece a `common/`.
+    """
+    conocidas = set(features(base))
+    salida: list[Hallazgo] = []
+    for nombre in sorted(conocidas):
+        for p, t in arboles(archivos(base / "ui" / "views" / nombre)):
+            for n in ast.walk(t):
+                modulos: list[str] = []
+                if isinstance(n, ast.ImportFrom) and n.module:
+                    modulos.append(n.module)
+                elif isinstance(n, ast.Import):
+                    modulos += [a.name for a in n.names]
+                for m in modulos:
+                    partes = m.split(".")
+                    if len(partes) >= 3 and partes[0] == "ui" and partes[1] == "views":
+                        if partes[2] in conocidas and partes[2] != nombre:
+                            salida.append(
+                                Hallazgo(relativo(p), n.lineno,
+                                         f"importa la feature hermana {partes[2]}")
+                            )
+    return salida
+
+# --------------------------------------------------------------------------
+# Chequeos — controllers y commands (R8, R10-R14)
+# --------------------------------------------------------------------------
+
+
+def controllers(base: Path = ROOT) -> list[Path]:
+    """Archivos que actúan como controller (por convención de nombre)."""
+    return [p for p in archivos(base / "ui")
+            if p.name == "controller.py" or p.name.endswith("_controller.py")]
+
+
+def commands(base: Path = ROOT) -> list[Path]:
+    """
+    Archivos de comandos: los de cada feature.
+
+    `common/commands/global_commands.py` ya no existe: la aplicación tiene **una sola
+    ventana**, así que no hay comandos compartidos entre ventanas (decisión D3). Cuando
+    haga falta multi-ventana, se creará donde el spec diga.
+    """
+    return [p for p in archivos(base / "ui") if p.name == "commands.py"]
+
+
+def chequeo_r6(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R6 — quien llama a una vista usa su interfaz pública.
+
+    Comprobación: en los controllers, una llamada `self.<colaborador>._metodo()` es
+    acceso a la parte **privada** de otro objeto. Cuando el colaborador es la vista, es
+    exactamente lo que la regla prohíbe.
+
+    No se marca el acceso a atributos privados del propio controller (`self._algo`),
+    porque eso es estado propio, no la interfaz de otro.
+    """
+    salida: list[Hallazgo] = []
+    for p, t in arboles(controllers(base)):
+        for n in ast.walk(t):
+            if not isinstance(n, ast.Call) or not isinstance(n.func, ast.Attribute):
+                continue
+            metodo = n.func.attr
+            if not metodo.startswith("_") or metodo.startswith("__"):
+                continue
+            receptor = n.func.value
+            if (isinstance(receptor, ast.Attribute)
+                    and isinstance(receptor.value, ast.Name)
+                    and receptor.value.id == "self"):
+                salida.append(
+                    Hallazgo(relativo(p), n.lineno,
+                             f"llama a {receptor.attr}.{metodo}() (privado de otro objeto)")
+                )
+    return salida
+
+
+def chequeo_r8(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R8 — los controllers orquestan: no tocan la base de datos ni cargan lógica.
+
+    Dos comprobaciones:
+
+      (a) **acceso directo a la BD desde un controller** — es la regla;
+      (b) **presupuesto de tamaño de los módulos** (spec §22.2): módulos que pasan del
+          umbral son candidatos a revisión, porque un módulo muy grande suele esconder
+          lógica que debería estar en un servicio o en otro módulo.
+
+    El tamaño se mide sobre **todos** los módulos de la aplicación (decisión D1: los tres
+    mayores viven en `common/`, así que mirar solo `ui/` los ocultaba). Es un
+    **indicador con presupuesto**, no una violación: su meta no es 0, sino **no crecer y
+    bajar cuando el módulo tenga responsabilidades mezcladas** (decisión D2).
+    """
+    salida = busca(controllers(base), r"self\._db\b|\bDatabaseManager\b|\b\w+\.db\s*\.")
+    for p in archivos(base / "core") + archivos(base / "common") + archivos(base / "ui"):
+        n = len(lineas(p))
+        if n > LIMITE_MODULO_UI:
+            salida.append(Hallazgo(relativo(p), 1,
+                                   f"{n} líneas (presupuesto de tamaño, umbral {LIMITE_MODULO_UI})"))
+    return salida
+
+
+def chequeo_r9(base: Path = ROOT) -> tuple[list[Hallazgo], list[str]]:
+    """
+    R9 — la lógica de negocio vive en `core/services` y `core/business_rules`.
+
+    Verificación **informativa**: se comprueba que existan los servicios y que no
+    dependan de Qt (si dependieran, no serían dominio).
+    """
+    servicios = archivos(base / "core" / "services")
+    reglas = base / "core" / "business_rules.py"
+    notas = [f"{len(servicios)} archivos en core/services/",
+             f"core/business_rules.py {'existe' if reglas.exists() else 'FALTA'}"]
+    salida: list[Hallazgo] = []
+    for p, t in arboles(servicios):
+        for n in ast.walk(t):
+            if isinstance(n, (ast.Import, ast.ImportFrom)):
+                modulos = [a.name for a in n.names]
+                if isinstance(n, ast.ImportFrom) and n.module:
+                    modulos.append(n.module)
+                if any(m.split(".")[0] in QT_RAICES for m in modulos):
+                    salida.append(Hallazgo(relativo(p), n.lineno,
+                                           "un servicio de dominio importa Qt"))
+    return salida, notas
+
+
+def chequeo_r10(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R10 — los `QUndoCommand` reciben dependencias explícitas.
+
+    Un comando que captura una `QUndoStack` deja de poder usarse en otra ventana, así
+    que su presencia es una violación.
+    """
+    return [
+        Hallazgo(relativo(p), i, f"{msg} (el comando no debe capturar la pila)")
+        for p, t in arboles(commands(base))
+        for i, msg in referencias(t, {"QUndoStack", "QUndoGroup"}, incluir_import=False)
+    ]
+
+
+def chequeo_r11(base: Path = ROOT) -> list[Hallazgo]:
+    """R11 — todo `QUndoCommand` define `redo()` y `undo()`."""
+    salida: list[Hallazgo] = []
+    for p, t in arboles(commands(base)):
+        for clase in clases_que_heredan(t, "QUndoCommand"):
+            metodos = {n.name for n in clase.body if isinstance(n, ast.FunctionDef)}
+            for requerido in ("redo", "undo"):
+                if requerido not in metodos:
+                    salida.append(Hallazgo(relativo(p), clase.lineno,
+                                           f"{clase.name} no define {requerido}()"))
+    return salida
+
+
+def chequeo_r12(base: Path = ROOT) -> list[Hallazgo]:
+    """R12 — no se usan hacks tipo `_applied_once` para simular el primer redo."""
+    return [
+        Hallazgo(relativo(p), i, msg)
+        for p, t in arboles(commands(base))
+        for i, msg in referencias(t, {"_applied_once", "_applied", "_first_redo"},
+                                  incluir_import=False)
+    ]
+
+def _clasifica_dinamica(nodo: ast.Call) -> str:
+    """
+    Clasifica un `hasattr`/`getattr`/`setattr` según el criterio del spec §22.4.
 
     Returns:
-        Lista de tuplas ``(archivo, línea, descripción)``.
+        "propio"  consulta el estado propio (`hasattr(self, ...)`)
+        "lookup"  nombre resuelto en ejecución (`getattr(obj, variable, ...)`)
+        "ajeno"   consulta otro objeto → violación de R13
     """
-    hits = []
-    for f in files:
-        try:
-            tree = ast.parse(f.read_text(encoding="utf-8"))
-        except (OSError, SyntaxError):
+    if not nodo.args:
+        return "ajeno"
+    objetivo = nodo.args[0]
+    es_propio = (
+        (isinstance(objetivo, ast.Name) and objetivo.id == "self")
+        or (isinstance(objetivo, ast.Attribute) and isinstance(objetivo.value, ast.Name)
+            and objetivo.value.id == "self")
+    )
+    if len(nodo.args) >= 2 and not isinstance(nodo.args[1], ast.Constant):
+        return "lookup"
+    return "propio" if es_propio else "ajeno"
+
+
+def chequeo_r13(base: Path = ROOT) -> tuple[list[Hallazgo], list[Hallazgo], list[Hallazgo]]:
+    """
+    R13 — no se usa `hasattr`/`getattr`/`setattr` para descubrir objetos.
+
+    Devuelve tres grupos, porque el spec §22.4 los trata distinto:
+
+      * **violaciones**: consulta otro objeto (`hasattr(mw, "_undo_stack")`).
+      * **estado propio**: `hasattr(self, …)`; se corrige inicializando en `__init__`,
+        y se informa aparte para no confundirlo con lo anterior.
+      * **excepciones**: lookups por nombre y guardas de capacidad declaradas en
+        `EXCEPCIONES_R13`; se listan para que se vean, no para contarlas.
+
+    Se usa AST: comentarios y docstrings no cuentan.
+    """
+    nombres = {"hasattr", "getattr", "setattr"}
+    violaciones: list[Hallazgo] = []
+    propios: list[Hallazgo] = []
+    excepciones: list[Hallazgo] = []
+    for p, t in arboles(archivos(base / "ui") + archivos(base / "common")):
+        for n in ast.walk(t):
+            if not es_llamada(n, nombres):
+                continue
+            fn = n.func.id if isinstance(n.func, ast.Name) else n.func.attr
+            atributo = ""
+            if len(n.args) >= 2 and isinstance(n.args[1], ast.Constant):
+                atributo = str(n.args[1].value)
+            motivo = EXCEPCIONES_R13.get((relativo(p), atributo))
+            if motivo:
+                excepciones.append(Hallazgo(relativo(p), n.lineno,
+                                            f"{fn}: excepción declarada — {motivo}"))
+                continue
+            grupo = _clasifica_dinamica(n)
+            if grupo == "propio":
+                propios.append(Hallazgo(relativo(p), n.lineno, f"{fn} sobre el propio estado"))
+            elif grupo == "lookup":
+                excepciones.append(Hallazgo(relativo(p), n.lineno,
+                                            f"{fn}: nombre resuelto en ejecución (§22.4)"))
+            else:
+                violaciones.append(Hallazgo(relativo(p), n.lineno, f"{fn} sobre otro objeto"))
+    return violaciones, propios, excepciones
+
+
+def chequeo_r14(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R14 — los commands no manipulan widgets.
+
+    Mira **nombres de widgets y de sus métodos** (no una lista de imports): así detecta
+    tanto `QMessageBox.warning(...)` como `self.view.setVisible(True)`.
+    """
+    return [
+        Hallazgo(relativo(p), i, f"command con widget: {msg}")
+        for p, t in arboles(commands(base))
+        for i, msg in referencias(t, NOMBRES_DE_WIDGET, incluir_import=True)
+        if (relativo(p), "") not in EXCEPCIONES_R14
+    ]
+
+# --------------------------------------------------------------------------
+# Chequeos — estilos, iconos, common/ y tests (R16-R20)
+# --------------------------------------------------------------------------
+
+
+def chequeo_r16_r17(base: Path = ROOT) -> list[Hallazgo]:
+    """
+    R16/R17 — los estilos viven en `theme.qss`; nada de `setStyleSheet` disperso.
+
+    Única excepción declarada: `common/styles/style_manager.py`, que es donde se genera y
+    aplica el QSS (ver `EXCEPCIONES_R16`).
+    """
+    salida = []
+    for h in busca(archivos(base / "ui") + archivos(base / "common"), r"\.setStyleSheet\("):
+        if any(exceptuado in h.archivo for exceptuado in EXCEPCIONES_R16):
             continue
-        for node in ast.walk(tree):
-            name = None
-            if isinstance(node, ast.Name):
-                name = node.id
-            elif isinstance(node, ast.Attribute):
-                name = node.attr
-            if name and name.startswith(prefixes):
-                hits.append((rel(f), node.lineno, f"referencia a {name}"))
-    return hits
+        salida.append(h)
+    return salida
 
 
-def section(title: str) -> None:
-    """Imprime un encabezado de sección."""
-    print("\n" + "=" * 78)
-    print(title)
-    print("=" * 78)
-
-
-def ast_refs(files, names: set[str]):
+def chequeo_r18(base: Path = ROOT) -> tuple[list[Hallazgo], list[str]]:
     """
-    Referencias **reales** a nombres dados, usando el AST de Python.
+    R18 — los iconos se generan con `common/icons.get_icon()`.
 
-    A diferencia de ``grep``, ignora docstrings y comentarios, por lo que las
-    menciones explicativas en la documentación no cuentan como violaciones.
-
-    Returns:
-        Lista de tuplas ``(archivo, línea, descripción)``.
+    Verificación **informativa**: cuenta los usos de la fábrica y, como señal, los
+    `setIcon(QIcon(` construidos a mano (que es justo lo que la fábrica evita).
     """
-    hits = []
-    for f in files:
-        try:
-            tree = ast.parse(f.read_text(encoding="utf-8"))
-        except (OSError, SyntaxError):
-            continue
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Name) and node.id in names:
-                hits.append((rel(f), node.lineno, f"referencia a {node.id}"))
-            elif isinstance(node, ast.Attribute) and node.attr in names:
-                hits.append((rel(f), node.lineno, f"referencia a .{node.attr}"))
-            elif isinstance(node, ast.ImportFrom):
-                for alias in node.names:
-                    if alias.name in names or (node.module or "") in names:
-                        hits.append((rel(f), node.lineno, f"importa {alias.name}"))
-    return hits
+    usos = busca(archivos(base / "ui") + archivos(base / "common"), r"get_icon\(")
+    directos = busca(archivos(base / "ui") + archivos(base / "common"), r"setIcon\(\s*QIcon\(")
+    notas = [f"{len(usos)} usos de get_icon()",
+             f"{len(directos)} iconos construidos a mano (setIcon(QIcon(...)))"]
+    return directos, notas
 
 
-def report(title: str, hits, key: str, limit: int = 30) -> None:
-    """Imprime un bloque de hallazgos y acumula su contador."""
-    COUNTS[key] = COUNTS.get(key, 0) + len(hits)
-    print(f"\n{title}  -> {len(hits)}")
-    if not hits:
-        print("   (ninguna)")
-        return
-    for f, i, line in hits[:limit]:
-        print(f"   {f}:{i}  {line}")
-    if len(hits) > limit:
-        print(f"   ... y {len(hits) - limit} más")
+def chequeo_r19(base: Path = ROOT) -> tuple[list[Hallazgo], list[str]]:
+    """
+    R19 — `common/` solo contiene componentes realmente compartidos.
+
+    Verificación **informativa**: para cada subcarpeta de `common/`, cuántos módulos de
+    `ui/` la usan. Una subcarpeta que no la usa nadie es candidata a no ser común.
+    """
+    raiz_common = base / "common"
+    notas: list[str] = []
+    sospechosas: list[Hallazgo] = []
+    if not raiz_common.is_dir():
+        return sospechosas, ["no existe common/"]
+    modulos_ui = arboles(archivos(base / "ui"))
+    for sub in sorted(d for d in raiz_common.iterdir() if d.is_dir() and d.name != "__pycache__"):
+        prefijo = f"common.{sub.name}"
+        usuarios = 0
+        for _, t in modulos_ui:
+            for n in ast.walk(t):
+                modulos = []
+                if isinstance(n, ast.ImportFrom) and n.module:
+                    modulos.append(n.module)
+                elif isinstance(n, ast.Import):
+                    modulos += [a.name for a in n.names]
+                if any(m.startswith(prefijo) for m in modulos):
+                    usuarios += 1
+                    break
+        notas.append(f"common/{sub.name}/ -> {usuarios} módulos de ui/ lo usan")
+        if usuarios == 0:
+            sospechosas.append(Hallazgo(f"common/{sub.name}/", 1,
+                                        "ningún módulo de ui/ lo usa (¿realmente compartido?)"))
+    return sospechosas, notas
 
 
-CORE = list(py_files(ROOT / "core"))
-UI = list(py_files(ROOT / "ui"))
-COMMON = list(py_files(ROOT / "common"))
-TESTS = list(py_files(ROOT / "tests"))
-WIDGETS = list(py_files(ROOT / "common" / "widgets"))
-VIEW_PY = [p for p in UI if p.name == "view.py"]
-CMD_PY = [p for p in UI if p.name == "commands.py"]
-_global_cmds = ROOT / "common/commands/global_commands.py"
-if _global_cmds.exists():
-    CMD_PY.append(_global_cmds)
-CTRL_PY = [p for p in UI if p.name == "controller.py" or p.name.endswith("_controller.py")]
-ALL_APP = CORE + UI + COMMON + [ROOT / "main.py"]
+def chequeo_r20(base: Path = ROOT) -> list[Hallazgo]:
+    """R20 — los tests de dominio (`tests/core/`) no arrancan Qt."""
+    pruebas = archivos(base / "tests" / "core")
+    return busca(pruebas, r"^\s*(from|import)\s+(PySide6|PyQt5|PyQt6)")
 
-# ==================================================== 1. ESTRUCTURA OBJETIVO
-section("1. ESTRUCTURA OBJETIVO")
-estructura = 0
+# --------------------------------------------------------------------------
+# Registro de las 22 reglas (spec §22.2)
+# --------------------------------------------------------------------------
 
-for d in [
-    "core", "core/services", "common", "common/commands", "common/widgets",
-    "ui", "ui/styles", "ui/icons", "ui/views", "ui/views/main_window",
-    "ui/views/project_editor", "tests", "tests/core", "tests/commands",
-    "tests/controllers",
-]:
-    ok = (ROOT / d).is_dir()
-    estructura += 0 if ok else 1
-    print(f"   {'OK   ' if ok else 'FALTA'} {d}/")
 
-print("\n[1.1] Archivos clave del núcleo:")
-for f in ["core/models.py", "core/business_rules.py", "core/services/project_service.py",
-          "core/services/drawing_service.py", "core/services/annotation_service.py",
-          "common/commands/global_commands.py", "requirements.txt", "main.py"]:
-    ok = (ROOT / f).is_file()
-    estructura += 0 if ok else 1
-    print(f"   {'OK   ' if ok else 'FALTA'} {f}")
+def evaluar(base: Path = ROOT) -> list[Regla]:
+    """Ejecuta los chequeos y devuelve las 22 reglas evaluadas."""
+    r13_violaciones, r13_propios, r13_excepciones = chequeo_r13(base)
+    r9_hallazgos, r9_notas = chequeo_r9(base)
+    r18_hallazgos, r18_notas = chequeo_r18(base)
+    r19_hallazgos, r19_notas = chequeo_r19(base)
+    r16_hallazgos = chequeo_r16_r17(base)
 
-print("\n[1.2] __init__.py faltantes:")
-for d in ["core", "core/services", "common", "common/commands", "common/widgets",
-          "ui", "ui/styles", "ui/icons", "ui/views", "ui/views/main_window",
-          "ui/views/project_editor", "tests", "tests/core", "tests/commands",
-          "tests/controllers", "common/pdf", "ui/views/auto_namer"]:
-    p = ROOT / d
-    if p.is_dir() and not (p / "__init__.py").exists():
-        print(f"   FALTA {d}/__init__.py")
-        estructura += 1
+    reglas = [
+        Regla("R1", "core/ no importa PySide6", "auto", "imports en core/", chequeo_r1(base)),
+        Regla("R2", "view.py no contiene SQL", "auto", "SQL en ui/**/view.py", chequeo_r2(base)),
+        Regla("R3", "view.py no accede a database.py", "auto", "acceso a BD en view.py", chequeo_r3(base)),
+        Regla("R4", "las vistas no llaman parent()/window()", "auto", "llamadas en ui/ y common/", chequeo_r4(base)),
+        Regla("R5", "las vistas emiten señales para eventos", "manual",
+              "revisión manual al cerrar cada hito (spec §22.2)"),
+        Regla("R6", "los controllers llaman métodos públicos de la vista", "auto",
+              "llamadas a métodos privados de colaboradores desde controllers", chequeo_r6(base)),
+        Regla("R7", "las vistas hermanas no se conocen", "auto",
+              "imports entre features de ui/views/", chequeo_r7(base)),
+        Regla("R8", "los controllers solo orquestan", "auto",
+              "acceso a BD desde controllers + presupuesto de tamaño de todos los módulos",
+              chequeo_r8(base)),
+        Regla("R9", "la lógica de negocio vive en core/services", "informativa",
+              "core/services/ y business_rules.py", r9_hallazgos, r9_notas),
+        Regla("R10", "los QUndoCommand reciben dependencias explícitas", "auto",
+              "referencias a QUndoStack en commands.py", chequeo_r10(base)),
+        Regla("R11", "redo() realiza la operación", "auto",
+              "clases QUndoCommand sin redo/undo", chequeo_r11(base)),
+        Regla("R12", "sin hacks tipo _applied_once", "auto",
+              "marcas de primer-redo en commands.py", chequeo_r12(base)),
+        Regla("R13", "sin hasattr/getattr para descubrir objetos", "auto",
+              "hasattr/getattr/setattr en ui/ y common/", r13_violaciones),
+        Regla("R14", "los commands no manipulan widgets", "auto",
+              "widgets usados desde commands.py", chequeo_r14(base)),
+        Regla("R15", "core no utiliza Signals de Qt", "auto", "Signal en core/", chequeo_r15(base)),
+        Regla("R16", "los estilos permanentes viven en theme.qss", "auto",
+              "setStyleSheet fuera de common/styles/", r16_hallazgos),
+        Regla("R17", "sin setStyleSheet disperso", "auto",
+              "mismo chequeo que R16", list(r16_hallazgos)),
+        Regla("R18", "los iconos se generan con get_icon()", "informativa",
+              "usos de common/icons", r18_hallazgos, r18_notas),
+        Regla("R19", "common/ solo contiene lo realmente compartido", "informativa",
+              "uso de cada subcarpeta de common/", r19_hallazgos, r19_notas),
+        Regla("R20", "el dominio se prueba sin iniciar Qt", "auto",
+              "tests/core/ sin Qt", chequeo_r20(base)),
+        Regla("R21", "los gráficos de Qt no son modelo de dominio", "auto",
+              "objetos gráficos en core/", chequeo_r21(base)),
+        Regla("R22", "sin capas nuevas sin necesidad real", "manual",
+              "revisión manual al cerrar cada hito (spec §22.2)"),
+    ]
+    r13 = next(r for r in reglas if r.id == "R13")
+    r13.notas.append(f"{len(r13_propios)} marcas de estado propio (se corrigen inicializando en __init__)")
+    r13.notas.append(f"{len(r13_excepciones)} excepciones (lookup por nombre y guardas de capacidad)")
+    return reglas
 
-print("\n[1.3] Features en ui/views/ (view + controller + commands):")
-for d in sorted((ROOT / "ui/views").iterdir()):
-    if d.is_dir() and d.name != "__pycache__":
-        files = sorted(x.name for x in d.glob("*.py"))
-        falta = []
-        if not (d / "view.py").exists():
-            falta.append("view.py")
-        if not (d / "commands.py").exists():
-            falta.append("commands.py")
-        if not [n for n in files if n == "controller.py" or n.endswith("_controller.py")]:
-            falta.append("controller.py")
-        print(f"   {d.name}/ -> {files}")
-        if falta:
-            for f_name in list(falta):
-                key = f"{d.name}/{f_name}"
-                if key in JUSTIFIED_EXCEPTIONS:
-                    print(f"      excepción documentada: {f_name} "
-                          f"({JUSTIFIED_EXCEPTIONS[key]})")
-                    falta.remove(f_name)
-        if falta:
-            print(f"      falta: {falta}")
-            estructura += len(falta)
 
-print("\n[1.4] common/ por subcarpeta (regla 19):")
-for d in sorted((ROOT / "common").iterdir()):
-    if d.is_dir() and d.name != "__pycache__":
-        print(f"   {d.name}/ ({len(list(d.glob('*.py')))} .py)")
+def inventario_modulos(base: Path = ROOT) -> list[tuple[str, int]]:
+    """Tamaño de todos los módulos de aplicación, de mayor a menor."""
+    todos = archivos(base / "core") + archivos(base / "common") + archivos(base / "ui")
+    return sorted(((relativo(p), len(lineas(p))) for p in todos), key=lambda t: -t[1])
 
-COUNTS["estructura"] = estructura
+# --------------------------------------------------------------------------
+# Salida
+# --------------------------------------------------------------------------
 
-# ============================================ 2. CORE SIN QT (reglas 3,10,15)
-section("2. REGLA 3/10/15/20 — core/ INDEPENDIENTE DE Qt")
-report("[2.1] core/ importa PySide6 / PyQt",
-       grep(CORE, r"^\s*(from|import)\s+(PySide6|PyQt[56])"), "regla3")
-report("[2.2] core/ usa nombres de Qt (QWidget|QObject|Signal|QIcon|QGraphicsItem|QApplication)",
-       ast_refs(CORE, {"QWidget", "QObject", "Signal", "QIcon",
-                       "QGraphicsItem", "QApplication"}), "regla3")
-report("[2.3] core/ importa capas UI",
-       grep(CORE, r"^\s*(from|import)\s+(ui|common)\b"), "regla3")
-report("[2.4] core/ usa objetos gráficos (regla 21: gráficos fuera del dominio)",
-       ast_refs_prefix(CORE, ("QGraphics",)), "regla21")
 
-# ======================================== 3. VIEWS SIN SQL/DB (reglas 5,6)
-section("3. REGLA 5/6 — view.py SIN SQL NI ACCESO A DATABASE")
-report("[3.1] view.py con SQL directo",
-       grep(VIEW_PY, r"\b(SELECT|INSERT INTO|UPDATE |DELETE FROM|CREATE TABLE)\b"), "regla5")
-report("[3.2] view.py acoplada a core.database",
-       grep(VIEW_PY, r"core\.database|DatabaseManager"), "regla5")
+def contadores(reglas: list[Regla]) -> dict[str, int]:
+    """Solo las reglas automáticas tienen contador (las manuales no se cuentan)."""
+    return {r.id: r.cuenta for r in reglas if r.tipo == "auto"}
 
-# ==================================== 4. ACOPLAMIENTO VISTAS (reglas 1,4,7)
-section("4. REGLA 1/4/7/14 — DESACOPLAMIENTO DE VISTAS")
-report("[4.1] Widgets llamando a parent()/parentWidget()/window()",
-       grep(WIDGETS, r"\bself\.parent\(\)|\bself\.parentWidget\(\)|\bself\.window\(\)"), "regla1")
-report("[4.2] Acceso a estado privado de la ventana (mw._ / main_window._)",
-       grep(WIDGETS, r"mw\._|main_window\._"), "regla1")
-report("[4.3] Acceso a scene().views() (hijo -> vista)",
-       grep(ALL_APP, r"scene\(\)\.views\(\)"), "regla1")
-report("[4.4] Vistas hermanas importándose entre sí",
-       grep(VIEW_PY, r"^\s*(from|import)\s+ui\.views\.(?!main_window\b|project_editor\b)"), "regla7")
 
-# ============================================ 5. COMMANDS (reglas 2,8-14)
-section("5. REGLA 2/8-14 — QUndoCommand CANÓNICO")
-print(f"\n[5.0] commands.py: {[rel(p) for p in CMD_PY]}")
-# Comprobaciones por AST: ignoran docstrings/comentarios (evitan falsos positivos).
-report("[5.1] commands.py con inspección dinámica real",
-       ast_refs(CMD_PY, {"hasattr", "getattr", "setattr"}), "regla2")
-report("[5.2] commands.py con _applied_once",
-       ast_refs(CMD_PY, {"_applied_once"}), "regla2")
-report("[5.3] commands.py manipulando widgets",
-       ast_refs(CMD_PY, {"QtWidgets", "showMessage", "setText", "setVisible",
-                         "setStyleSheet", "_sidebar", "_status_bar"}), "regla2")
-report("[5.4] commands.py capturando una QUndoStack (impide una pila por ventana)",
-       ast_refs(CMD_PY, {"QUndoStack", "QUndoGroup"}), "regla2")
-print("\n[5.5] Estructura de cada comando (redo/undo + protocolo):")
-for p in CMD_PY:
-    text = p.read_text(encoding="utf-8")
-    print(f"   {rel(p)}: {len(re.findall(r'\(QUndoCommand\)', text))} comandos, "
-          f"{len(re.findall(r'\(Protocol\)', text))} Protocol, "
-          f"redo={len(re.findall(r'^    def redo', text, re.M))}, "
-          f"undo={len(re.findall(r'^    def undo', text, re.M))}")
+def imprimir_informe(reglas: list[Regla], detalle: int = 20) -> None:
+    """Informe legible, regla por regla."""
+    for r in reglas:
+        etiqueta = {"auto": "", "informativa": "  [informativa]",
+                    "manual": "  [revisión manual]"}[r.tipo]
+        if r.tipo == "auto":
+            marca = "OK  " if r.cuenta == 0 else "    "
+            print(f"\n{marca}{r.id} — {r.titulo}{etiqueta}")
+            print(f"     revisa: {r.revisa}  -> {r.cuenta}")
+            for h in r.hallazgos[:detalle]:
+                print(f"        {h}")
+            if len(r.hallazgos) > detalle:
+                print(f"        ... y {len(r.hallazgos) - detalle} más")
+        else:
+            print(f"\n--- {r.id} — {r.titulo}{etiqueta}")
+            print(f"     revisa: {r.revisa}")
+        for nota in r.notas:
+            print(f"     · {nota}")
 
-# ============================ 6. INSPECCIÓN DINÁMICA GLOBAL (regla 13/17)
-section("6. REGLA 13/17 — INSPECCIÓN DINÁMICA EN CÓDIGO DE APLICACIÓN")
-report("[6.1] hasattr/getattr/setattr en core/",
-       grep(CORE, r"\b(hasattr|getattr|setattr)\("), "regla17")
-report("[6.2] hasattr/getattr/setattr en ui/views/ (controllers incluidos)",
-       grep([p for p in UI if "views" in p.parts], r"\b(hasattr|getattr|setattr)\("), "regla17")
-report("[6.3] hasattr/getattr/setattr en common/widgets/",
-       grep(WIDGETS, r"\b(hasattr|getattr|setattr)\("), "regla17")
 
-# ================================ 7. SERVICIOS Y CONTROLLERS (reglas 8,9,10)
-section("7. REGLA 8/9/10 — SERVICIOS, BUSINESS RULES Y CONTROLLERS")
-print(f"\n[7.1] Servicios de dominio en core/services/: "
-      f"{len(list((ROOT / 'core/services').glob('*.py'))) if (ROOT / 'core/services').is_dir() else 0} archivos")
-report("[7.2] Controllers accediendo directamente a la BD (regla 8)",
-       grep(CTRL_PY, r"self\._db\b|\b\w+\.db\b"), "regla8")
+def imprimir_resumen(reglas: list[Regla]) -> None:
+    """Solo contadores, con el total de lo medible."""
+    print(f"\n{'REGLA':7s} {'TIPO':12s} {'HALLAZGOS':>9s}  TÍTULO")
+    for r in reglas:
+        if r.tipo == "auto":
+            print(f"{r.id:7s} {'automática':12s} {r.cuenta:9d}  {r.titulo}")
+        else:
+            print(f"{r.id:7s} {r.tipo:12s} {'-':>9s}  {r.titulo}")
+    total = sum(contadores(reglas).values())
+    print(f"\nTOTAL (solo reglas automáticas): {total}")
 
-# Guardarraíl EXTRA (no es una regla del spec, pero cubre un punto ciego real:
-# helpers de la capa UI, como el portapapeles, que accedían a `project_mgr.db`).
-ui_db = [h for h in grep(UI, r"\b\w+\.db\s*\.") if "__pycache__" not in str(h[0])]
-print(f"\n[7.2b] *Acceso a la BD en la capa UI* (guardarraíl extra)  -> {len(ui_db)}")
-for f, i, t in ui_db:
-    print(f"   {rel(f)}:{i}  {t}")
-print("\n[7.3] Tamaño de los controllers (heurística de lógica de negocio):")
-for p in sorted(CTRL_PY):
-    n = len(p.read_text(encoding="utf-8").splitlines())
-    flag = "  <-- revisar (posible lógica de negocio)" if n > 400 else ""
-    print(f"   {rel(p)}: {n} líneas{flag}")
 
-# ================================= 8. ESTILOS E ICONOS (reglas 18, 21)
-section("8. REGLA 18/21 — ESTILOS CENTRALIZADOS E ICONOS")
-hits = grep(UI + COMMON, r"\.setStyleSheet\(")
-by_file: dict[str, list[int]] = {}
-for f, i, _ in hits:
-    by_file.setdefault(f, []).append(i)
-print(f"\n[8.1] setStyleSheet() inline -> {len(hits)} en {len(by_file)} archivos")
-for f, lines in sorted(by_file.items(), key=lambda kv: -len(kv[1])):
-    print(f"   {f}  ({len(lines)}): {lines[:10]}{'...' if len(lines) > 10 else ''}")
-inline = [h for h in hits if "ui/styles/style_manager.py" not in h[0]]
-COUNTS["regla4"] = len(inline)
-print(f"   (excluyendo style_manager.py -> {len(inline)} violaciones)")
-report("[8.2] setProperty() (estado dinámico legítimo)",
-       grep(UI + COMMON, r"\.setProperty\("), "ok_setproperty")
-init = (ROOT / "ui/icons/__init__.py").read_text(encoding="utf-8") \
-    if (ROOT / "ui/icons/__init__.py").exists() else ""
-print(f"\n[8.3] Fábrica get_icon: {'OK' if 'def get_icon(' in init else 'FALTA'}")
-print(f"      Usos de la fábrica: {len(grep(UI + COMMON, r'get_icon[(]'))}")
+def como_json(reglas: list[Regla]) -> dict:
+    """Representación máquina del informe."""
+    return {
+        "reglas": [
+            {
+                "id": r.id, "titulo": r.titulo, "tipo": r.tipo, "revisa": r.revisa,
+                "hallazgos": [{"archivo": h.archivo, "linea": h.linea,
+                               "mensaje": h.mensaje} for h in r.hallazgos],
+                "notas": r.notas,
+            }
+            for r in reglas
+        ],
+        "contadores": contadores(reglas),
+        "total": sum(contadores(reglas).values()),
+        "modulos_mas_grandes": inventario_modulos()[:10],
+    }
 
-# ========================================== 9. LAYOUT DE TESTS (regla 16)
-section("9. REGLA 16 — ORGANIZACIÓN DE TESTS")
-for d in ["tests/core", "tests/commands", "tests/controllers"]:
-    n = len(list((ROOT / d).glob("test_*.py"))) if (ROOT / d).is_dir() else 0
-    print(f"   {'OK   ' if n else 'FALTA'} {d}/ ({n} tests)")
-print(f"   Raíz de tests/: {len([p for p in TESTS if p.parent == ROOT / 'tests'])} archivos")
-print("   Nota: core/ debe poder probarse SIN iniciar Qt (regla 20).")
-report("[9.1] Tests de core que importan Qt (viola regla 20)",
-       grep([p for p in TESTS if "core" in p.parts],
-            r"^\s*(from|import)\s+(PySide6|PyQt)"), "regla20")
 
-# ================================================= 10. RESTOS / DEUDA
-section("10. RESTOS / DEUDA TÉCNICA")
-report("[10.1] referencias a takeoff_viewer", grep(ALL_APP, r"takeoff_viewer"), "restos")
-report("[10.2] theme_module huérfano", grep(ALL_APP, r"theme_module"), "restos")
-print("\n[10.3] shiboken6 usado sin import:")
-for f in ALL_APP:
-    if f.exists() and "shiboken6." in f.read_text(encoding="utf-8"):
-        if "import shiboken6" not in f.read_text(encoding="utf-8"):
-            print(f"   FALTA import en {rel(f)}")
-            COUNTS["restos"] = COUNTS.get("restos", 0) + 1
+# --------------------------------------------------------------------------
+# Línea base
+# --------------------------------------------------------------------------
 
-# ================================================= 11. RESUMEN
-section("RESUMEN")
-labels = [
-    ("regla1", "Regla 1/4 (vistas desacopladas)"),
-    ("regla2", "Regla 2/8-13 (commands)"),
-    ("regla3", "Regla 3/10/15/20 (core sin Qt)"),
-    ("regla4", "Regla 18 (estilos)"),
-    ("regla5", "Regla 5/6 (view sin SQL)"),
-    ("regla7", "Regla 7/14 (vistas hermanas)"),
-    ("regla8", "Regla 8 (controllers sin BD)"),
-    ("regla17", "Regla 13/17 (inspección dinámica)"),
-    ("regla20", "Regla 20 (tests de core sin Qt)"),
-    ("regla21", "Regla 21 (gráficos fuera del dominio)"),
-    ("estructura", "Estructura objetivo"),
-    ("restos", "Restos / deuda"),
-]
-for key, label in labels:
-    value = COUNTS.get(key, 0)
-    mark = "OK " if value == 0 else "   "
-    print(f"   {mark}{label:38s}: {value:3d}")
-print(f"\n   TOTAL: {sum(v for k, v in COUNTS.items() if k != 'ok_setproperty'):3d}")
+
+def cargar_baseline(ruta: Path) -> dict[str, int]:
+    """Lee una línea base de contadores (vacío si no existe o está corrupta)."""
+    if not ruta.exists():
+        return {}
+    try:
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {k: int(v) for k, v in datos.get("contadores", {}).items()}
+
+
+def comparar(actual: dict[str, int], base: dict[str, int]) -> list[str]:
+    """Lista de empeoramientos respecto a la línea base."""
+    return [f"{k}: {base.get(k, 0)} -> {v}"
+            for k, v in sorted(actual.items()) if v > base.get(k, 0)]
+
+
+# --------------------------------------------------------------------------
+# Punto de entrada
+# --------------------------------------------------------------------------
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Ejecuta la auditoría y devuelve el código de salida."""
+    parser = argparse.ArgumentParser(
+        description="Auditoría de las 22 reglas de docs/ESPECIFICACION_ARQUITECTURA.md")
+    parser.add_argument("--resumen", action="store_true", help="solo contadores")
+    parser.add_argument("--json", action="store_true", help="salida máquina")
+    parser.add_argument("--baseline", metavar="FICHERO", type=Path,
+                        help="compara los contadores con esta línea base")
+    parser.add_argument("--guardar", metavar="FICHERO", type=Path,
+                        help="escribe la línea base actual")
+    parser.add_argument("--detalle", type=int, default=20,
+                        help="hallazgos mostrados por regla (por defecto 20)")
+    args = parser.parse_args(argv)
+
+    reglas = evaluar()
+    actual = contadores(reglas)
+
+    if args.guardar:
+        args.guardar.write_text(
+            json.dumps({"contadores": actual}, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8")
+        print(f"Línea base escrita en {args.guardar}")
+
+    if args.json:
+        print(json.dumps(como_json(reglas), indent=2, ensure_ascii=False))
+    elif args.resumen:
+        imprimir_resumen(reglas)
+    else:
+        imprimir_informe(reglas, detalle=args.detalle)
+        imprimir_resumen(reglas)
+
+    if args.baseline:
+        base = cargar_baseline(args.baseline)
+        empeoramientos = comparar(actual, base)
+        if empeoramientos:
+            print("\nHA EMPEORADO respecto a la línea base:")
+            for e in empeoramientos:
+                print(f"   {e}")
+            return 1
+        print(f"\nSin empeoramientos respecto a {args.baseline}")
+    return 0
+
 
 if __name__ == "__main__":
-    raise SystemExit(0)
+    raise SystemExit(main())

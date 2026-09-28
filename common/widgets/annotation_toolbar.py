@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
 )
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class AnnotationToolBar(QWidget):
@@ -119,7 +119,7 @@ class AnnotationToolBar(QWidget):
         Actualiza los iconos vectoriales según el tema activo (Methods Down).
 
         El estilo del contenedor, de los botones y de los separadores vive en
-        ``ui/styles/theme.qss``; aquí solo se regeneran los iconos, que no son
+        ``common/styles/theme.qss``; aquí solo se regeneran los iconos, que no son
         expresables en QSS.
         """
         for tool_id, icon_name, _ in self.TOOLS:

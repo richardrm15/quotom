@@ -1,5 +1,5 @@
 """
-Tests del sistema de tema centralizado (``ui/styles/style_manager.py`` + ``theme.qss``).
+Tests del sistema de tema centralizado (``common/styles/style_manager.py`` + ``theme.qss``).
 
 Verifica que la hoja QSS se parametriza sin marcadores huérfanos, que el cambio de
 tema funciona y que la fábrica de iconos responde al tema activo.
@@ -10,7 +10,7 @@ import sys
 
 from tests.support import app, run_standalone
 
-from ui.styles.style_manager import (
+from common.styles.style_manager import (
     DARK_TOKENS,
     LIGHT_TOKENS,
     ThemeManager,

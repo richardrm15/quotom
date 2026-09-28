@@ -1,5 +1,5 @@
 """
-Tests de desacoplamiento del canvas (Regla 1: Methods Down, Signals Up).
+Tests de desacoplamiento del canvas (R4: Methods Down, Signals Up).
 
 Verifica que ``AnnotationGraphicsItem`` no consulta a su vista y que
 ``PlanGraphicsView`` reenvía sus señales y empuja el estado hacia abajo.

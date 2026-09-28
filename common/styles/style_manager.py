@@ -4,7 +4,7 @@ Sistema Centralizado de Tema y Estilos (Single Source of Truth visual).
 Este módulo es el ÚNICO responsable de la apariencia de la aplicación:
 
 1. Define los tokens de diseño (``ThemeTokens``) para los modos Dark/Light.
-2. Carga y parametriza la hoja de estilos ``ui/styles/theme.qss``.
+2. Carga y parametriza la hoja de estilos ``common/styles/theme.qss``.
 3. Construye el ``QPalette`` nativo sincronizado con el tema activo.
 4. Expone iconos vectoriales ya coloreados según el tema activo.
 5. Genera los iconos auxiliares (+ / - / chevron) referenciados desde el QSS.
@@ -22,7 +22,7 @@ from PySide6.QtCore import Qt, QPointF, QRectF
 from PySide6.QtGui import QColor, QIcon, QPainter, QPalette, QPen, QPixmap
 from PySide6.QtWidgets import QApplication
 
-from ui.icons import get_icon
+from common.icons import get_icon
 
 logger = logging.getLogger("quotom.styles")
 
@@ -302,7 +302,7 @@ def _ensure_branch_icons(mode: str, tokens: ThemeTokens) -> tuple[str, str, str]
 
 
 def _load_qss_template() -> str:
-    """Lee la plantilla QSS centralizada (``ui/styles/theme.qss``)."""
+    """Lee la plantilla QSS centralizada (``common/styles/theme.qss``)."""
     try:
         return QSS_FILE.read_text(encoding="utf-8")
     except OSError as exc:
@@ -380,7 +380,7 @@ class ThemeManager:
         Icono vectorial nativo con el color de trazo exacto del tema activo.
 
         Args:
-            name: Nombre del icono en la fábrica (``ui/icons``).
+            name: Nombre del icono en la fábrica (``common/icons``).
             size: Lado en píxeles.
             color: Color explícito para teñirlo (p. ej. el token ``warning`` en un
                 banner de aviso). Si es ``None`` se usa el color del tema.
@@ -442,13 +442,13 @@ class ThemeManager:
         cls._current_mode = normalized if normalized in cls._tokens_map else "dark"
 
         tok = cls.tokens()
-        hints = app.styleHints()
-        if hasattr(hints, "setColorScheme"):
-            hints.setColorScheme(
-                Qt.ColorScheme.Light
-                if cls._current_mode == "light"
-                else Qt.ColorScheme.Dark
-            )
+        # `setColorScheme` existe desde Qt 6.5 y el proyecto exige PySide6 >= 6.6:
+        # no hace falta comprobar la capacidad (era código muerto).
+        app.styleHints().setColorScheme(
+            Qt.ColorScheme.Light
+            if cls._current_mode == "light"
+            else Qt.ColorScheme.Dark
+        )
 
         app.setPalette(cls.palette())
         app.setStyleSheet(build_qss(tok, mode=cls._current_mode))
@@ -478,7 +478,7 @@ class ThemeManager:
 
         El color es un **dato** (lo elige el usuario para cada zona) y no
         vocabulario del tema, así que no puede vivir en ``theme.qss``. Se
-        centraliza aquí para que la vista no conozca QSS (Regla 18); el resto del
+        centraliza aquí para que la vista no conozca QSS (R16/17); el resto del
         aspecto del widget (radio, padding, tamaño) sigue en ``theme.qss``.
         """
         widget.setStyleSheet(
@@ -493,7 +493,7 @@ class ThemeManager:
         Vive aquí y **no** en ``theme.qss`` porque parte de sus valores son
         **datos** de la anotación (el color de texto que eligió el usuario y el
         fondo de contraste calculado a partir de su luminancia), no vocabulario
-        del tema. Centralizarlo aquí evita que la vista conozca QSS (Regla 18).
+        del tema. Centralizarlo aquí evita que la vista conozca QSS (R16/17).
         """
         editor.setObjectName("annotationTextEditor")
         editor.setStyleSheet(

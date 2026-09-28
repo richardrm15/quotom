@@ -1,7 +1,7 @@
 """
 Test de integración del ``AnnotationController`` tras migrarlo a ``AnnotationService``.
 
-Objetivo (Regla 8): el controlador ya **no** accede a ``project_mgr.db``; todo el CRUD
+Objetivo (R8): el controlador ya **no** accede a ``project_mgr.db``; todo el CRUD
 pasa por el servicio de dominio. Este test ejercita el ciclo completo contra un
 proyecto temporal real: crear → leer → actualizar → borrar (lógico) → restaurar.
 """

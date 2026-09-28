@@ -1,7 +1,7 @@
 """
 Tests de `core/services/` — casos de uso del núcleo.
 
-Se ejecutan **sin iniciar Qt** (Regla 20): los servicios son dominio puro y usan
+Se ejecutan **sin iniciar Qt** (R20): los servicios son dominio puro y usan
 un proyecto temporal real en disco (SQLite + carpeta ``drawings/``).
 """
 from __future__ import annotations
@@ -150,7 +150,7 @@ def test_annotation_service_sin_proyecto_es_seguro():
 
 
 def test_services_no_importan_qt():
-    """Guardarraíl: los servicios son dominio puro (Regla 3/20)."""
+    """Guardarraíl: los servicios son dominio puro (R1/15 y R20)."""
     prohibidos = {"PySide6", "PyQt5", "PyQt6"}
     for modulo in (ProjectService, DrawingService, AnnotationService):
         import importlib

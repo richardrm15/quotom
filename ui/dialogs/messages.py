@@ -3,7 +3,7 @@ Mensajes y confirmaciones (``QMessageBox``).
 
 Centraliza las "recetas" que hoy se repiten en 50 puntos: título, icono, botones
 y botón por defecto. Los diálogos los dibuja Qt, así que heredan el estilo
-centralizado de ``ui/styles/theme.qss``.
+centralizado de ``common/styles/theme.qss``.
 """
 from __future__ import annotations
 

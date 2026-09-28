@@ -11,7 +11,7 @@ from PySide6.QtCore import QObject, Signal, QPointF, QPoint
 from core.geometry_utils import shift_geometry
 from core.services import ProjectService
 from core.settings import settings
-from ui.helpers.text_metrics import calculate_autofit_scene_geometry
+from common.helpers.text_metrics import calculate_autofit_scene_geometry
 from ui.views.project_editor.commands import (
     CreateAnnotationCommand,
     DeleteAnnotationCommand,

@@ -64,7 +64,7 @@ from PySide6.QtWidgets import (
     QGraphicsView,
 )
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 from common.widgets.title_bar import CustomTitleBar
 from common.widgets.window_resizer import WindowResizeFilter
 from common.widgets.graphics_view import PlanGraphicsView
@@ -1796,7 +1796,7 @@ class PageManagerWindow(QDialog):
         """
         Reaplica el tema a la ventana (Methods Down).
 
-        Todo el estilo del gestor vive en ``ui/styles/theme.qss``; aquí solo se
+        Todo el estilo del gestor vive en ``common/styles/theme.qss``; aquí solo se
         propaga el cambio de tema a las vistas que cachean color de lienzo.
         """
         if hasattr(self, "_full_viewer"):

@@ -7,7 +7,7 @@ comenzando con el explorador de archivos del proyecto.
 from typing import Callable
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QToolButton
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 
 class SideTabBar(QWidget):

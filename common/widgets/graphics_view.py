@@ -32,9 +32,9 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QFrame,
 )
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 from core.text_layer import PageTextData, SearchMatch
-from ui.helpers.qt_geometry import to_qpointf, to_qrectf
+from common.helpers.qt_geometry import to_qpointf, to_qrectf
 
 
 class ToolMode(Enum):
@@ -383,7 +383,7 @@ class PlanGraphicsView(QGraphicsView):
         """
         Reaplica el tema al lienzo (Methods Down).
 
-        El fondo del lienzo vive en ``ui/styles/theme.qss`` (``#planCanvas``);
+        El fondo del lienzo vive en ``common/styles/theme.qss`` (``#planCanvas``);
         aquí solo se fuerza un *repolish* para que Qt vuelva a evaluar la hoja
         global tras un cambio de tema.
         """

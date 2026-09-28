@@ -11,7 +11,7 @@ from PySide6.QtGui import QMouseEvent, QPainter, QColor, QPen
 from PySide6.QtWidgets import QWidget, QSizeGrip
 import shiboken6
 
-from ui.styles.style_manager import ThemeManager
+from common.styles.style_manager import ThemeManager
 
 BORDER_MARGIN = 8    # Margen perimetral para bordes rectos (L, R, T, B)
 CORNER_MARGIN = 24   # Margen ampliado para esquinas (especialmente esquina inferior derecha con SizeGrip)
@@ -132,7 +132,7 @@ class WindowResizeFilter(QObject):
             edges = self._get_edges_at_global_pos(event.globalPosition().toPoint())
             if edges:
                 handle = self._window.windowHandle()
-                if handle and hasattr(handle, "startSystemResize"):
+                if handle:
                     if handle.startSystemResize(edges):
                         event.accept()
                         return True
@@ -183,7 +183,7 @@ class ResizeGrip(QSizeGrip):
             win = self.window()
             if win:
                 handle = win.windowHandle()
-                if handle and hasattr(handle, "startSystemResize"):
+                if handle:
                     if handle.startSystemResize(Qt.Edge.RightEdge | Qt.Edge.BottomEdge):
                         event.accept()
                         return

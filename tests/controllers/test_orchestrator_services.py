@@ -104,7 +104,7 @@ def test_toggle_de_tema_aplica_el_estilo_una_sola_vez():
     """
     controller = _controller()
     try:
-        from ui.styles.style_manager import ThemeManager
+        from common.styles.style_manager import ThemeManager
 
         llamadas = {"n": 0}
         original = ThemeManager.apply_theme_to_app
@@ -129,7 +129,7 @@ def test_set_theme_aplica_el_modo_pedido():
     """`_set_theme` aplica el modo solicitado (no alterna: soporta N temas)."""
     controller = _controller()
     try:
-        from ui.styles.style_manager import ThemeManager
+        from common.styles.style_manager import ThemeManager
 
         original = ThemeManager.apply_theme
         aplicados: list[str] = []
